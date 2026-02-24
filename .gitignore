@@ -25,6 +25,6 @@ Thumbs.db
 
 
 old-App.vue/
-./*.png
-./*.svg
-./*.ico
+*.png
+*.svg
+*.ico
