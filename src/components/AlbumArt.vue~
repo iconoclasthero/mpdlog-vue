@@ -1,0 +1,87 @@
+<template>
+  <div>
+    <img 
+      v-if="albumArtUrl" 
+      :src="albumArtUrl" 
+      alt="Album Art" 
+      style="max-width: 50%; height: auto;"
+    >
+    <div v-else-if="isLoading" style="width: 25%; height: auto;">
+      <div class="musicdna-placeholder">
+        <p>Loading album art...</p>
+      </div>
+    </div>
+    <div v-else-if="showGratefulDeadArt" style="position:relative; left:-30px; width: 25%; height: auto;">
+      <div class="musicdna-placeholder">
+        <p>Grateful Dead - No album art</p>
+      </div>
+    </div>
+    <div v-else style="width: 25%; height: auto;">
+      <div class="musicdna-placeholder">
+        <p>No album art available</p>
+      </div>
+    </div>
+    <hr>
+  </div>
+</template>
+
+<script>
+import { ref, computed, watch } from 'vue'
+
+export default {
+  name: 'AlbumArt',
+  props: {
+    artist: String,
+    albumArtData: String  // Now: can be a blob URL too
+  },
+  setup(props) {
+    const albumArtUrl = ref(null)
+    const isLoading = ref(false)
+    const hasError = ref(false)
+
+    const showGratefulDeadArt = computed(() => {
+      return hasError.value && props.artist?.includes('Grateful Dead')
+    })
+
+    // Watch for album art data changes
+    watch(() => props.albumArtData, (newData, oldData) => {
+      if (oldData && oldData.startsWith('blob:')) {
+        URL.revokeObjectURL(oldData)  // clean up previous blob URL
+      }
+
+      if (newData) {
+        albumArtUrl.value = newData
+        hasError.value = false
+        isLoading.value = false
+      } else {
+        albumArtUrl.value = null
+        hasError.value = true
+      }
+    }, { immediate: true })
+
+    // When artist changes and no art yet, show loading
+    watch(() => props.artist, () => {
+      if (!props.albumArtData) {
+        isLoading.value = true
+      }
+    })
+
+    return {
+      albumArtUrl,
+      isLoading,
+      hasError,
+      showGratefulDeadArt
+    }
+  }
+}
+</script>
+
+<style scoped>
+.musicdna-placeholder {
+  background-color: #2a2a2a;
+  padding: 40px;
+  text-align: center;
+  border-radius: 8px;
+  color: #e0e0e0;
+}
+</style>
