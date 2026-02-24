@@ -76,6 +76,12 @@
     </span>
     <br>
 
+    <!-- Toggle path display -->
+    <span v-if="showPath" class="album file-path">
+      {{ current.file }}
+      <br>
+    </span>
+
     <!-- Status line - Desktop -->
     <span class="album desktop" style="font-style:normal">
       <a href="#" @click.prevent="$emit('action', 'mute_volume')">volume</a>: {{ status.player.volume }}%
@@ -154,7 +160,12 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 
 export default {
   name: 'CurrentlyPlaying',
-  props: { status: Object, current: Object, next: Object, linger: Object },
+  props: { status: Object,
+           current: Object, 
+           next: Object,
+           linger: Object,
+           showPath: Boolean
+  },
   emits: ['action'],
   setup(props, { emit }) {
     const elapsed = ref(0)
@@ -212,7 +223,8 @@ export default {
 
     return { stateText,colorClass,altClass,toggleIcon,disc,track,albumDisplay,
              repeatIcon,singleIcon,randomIcon,consumeIcon,elapsedDisplay,totalDisplay,
-             percentDisplay,percentValue,lingerXY, lingerStat }
+             percentDisplay,percentValue,lingerXY, lingerStat,
+           }
   }
 }
 </script>

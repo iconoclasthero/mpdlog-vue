@@ -47,12 +47,16 @@
         </a>
       </strong>
       <br>
+      <span v-if="showPath || viewMode === 'long'" class="album file-path">
+        {{ entry.file }}
+        <br>
+      </span>
 
-      <span v-if="viewMode === 'long'" class="album">
+<!--      <span v-if="viewMode === 'long'" class="album">
         {{ entry.file }}
       </span>
       <br v-if="viewMode === 'long'">
-
+-->
       <br>
     </template>
   </div>
@@ -63,7 +67,8 @@ export default {
   name: 'LogSection',
   props: {
     entries: Array,
-    viewMode: String
+    viewMode: String,
+    showPath: Boolean
   },
   setup() {
     const formatDisc = (disc) => {

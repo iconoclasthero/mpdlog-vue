@@ -9,15 +9,20 @@
 
     </div>
 
-    <button @click="showDialog = false"
+<!--    <button @click="showDialog = false"
        style="position:absolute; top:2px; right:2px; font-size:1em; border:none; background:none; cursor:pointer;">
        ✖
+    </button>
+-->
+    <button @click="$emit('close')"
+      style="position:absolute; top:2px; right:2px; font-size:1em; border:none; background:none; cursor:pointer;">
+      ✖
     </button>
 
     <!-- tabs -->
     <div style="display:flex;border-bottom:1px solid #444;">
       <div @click="tab='linger'" :style="tabStyle('linger')">linger</div>
-      <div @click="tab='dummy'" :style="tabStyle('dummy')">dummy</div>
+      <div @click="tab='audio'" :style="tabStyle('audio')">audio</div>
     </div>
 
     <!-- linger tab -->
@@ -28,24 +33,22 @@
       <div>blocklimit</div>
       <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
         <input type="number"
-               v-model.number="blocklimit"
-               style="width:70px; padding:2px 4px;">
+             v-model.number="blocklimit"
+             style="width:60px; padding:2px 4px;">
         <label style="display:flex; align-items:center; cursor:pointer;">
           <input type="checkbox"
-                 @change="toggleBlocklimit"
-                 style="display:none">
+               @change="toggleBlocklimit"
+               style="display:none">
 
           <span
             :style="{ background: blockEnabled ? '#4ade80' : '#ccc' }"
-
             style="
               width:42px;
               height:22px;
               border-radius:11px;
               position:relative;
-              transition:0.2s;
-            ">
-
+              transition:0.2s;"
+            >
 
             <span
               :style="{ transform: blockEnabled ? 'translateX(20px)' : 'translateX(0)' }"
@@ -53,19 +56,17 @@
                 position:absolute;
                 top:3px;
                 left:3px;
-                  width:16px;
+                width:16px;
                 height:16px;
                 background:white;
                 border-radius:50%;
-                transition:0.2s;
-            ">
+                transition:0.2s;"
+            >
             </span>
           </span>
         </label>
       </div>
     </div>
-
-
 
 
       <div style="margin-top:10px;">
@@ -90,37 +91,42 @@
           <!-- start X -->
           <div style="display:flex; flex-direction:column; align-items:flex-start;">
             <label>Start</label>
-            <input type="number" v-model.number="xyStart" style="width:60px">
+              <input type="number" min="0" step="1" v-model.number="xyStart" style="width:65px">
           </div>
 
           <!-- end Y -->
           <div style="display:flex; flex-direction:column; align-items:flex-start;">
             <label>End/Inc.</label>
-            <input type="number" v-model.number="xyEnd" style="width:60px">
+              <input type="text" v-model="xyEnd" style="width:65px">
           </div>
 
           <!-- on/off slider toggle -->
           <div style="display:flex; align-items:center; margin-left:10px;">
             <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-              <input type="checkbox" v-model="xyEnabled" style="display:none">
-              <span style="
-                width:40px;
-                height:20px;
-                background:#ccc; /* path color */
-                border-radius:10px;
-                position:relative;
-                transition:0.2s;
-              " :class="{ 'bg-green-500': xyEnabled }">
-                <span style="
-                  position:absolute;
-                  top:2px;
-                  left:2px;
-                  width:16px;
-                  height:16px;
-                  background:white;     /* button color */
-                  border-radius:50%;
-                  transition:0.2s;
-                " :style="{ transform: xyEnabled ? 'translateX(20px)' : 'translateX(0)' }"></span>
+              <input type="checkbox"
+                     @change="toggleXY"
+                     style="display:none">
+              <span
+                :style="{ background: xyEnabled ? '#4ade80' : '#ccc' }"
+                style="
+                  width:40px;
+                  height:20px;
+                  border-radius:10px;
+                  position:relative;
+                  transition:0.2s;"
+                >
+                <span 
+                  :style="{ transform: xyEnabled ? 'translateX(20px)' : 'translateX(0)' }"
+                  style="
+                    position:absolute;
+                   top:2px;
+                   left:2px;
+                   width:16px;
+                   height:16px;
+                   background:white;     /* button color */
+                   border-radius:50%;
+                   transition:0.2s;"
+                ></span>
               </span>
             </label>
           </div>
@@ -133,8 +139,8 @@
 
 
 
-    <!-- dummy tab -->
-    <div v-if="tab==='dummy'" style="padding:10px;">nothing yet</div>
+    <!-- audio tab -->
+    <div v-if="tab==='audio'" style="padding:10px;">nothing yet</div>
   </div>
 </template>
 
@@ -147,7 +153,7 @@ export default {
     visible: Boolean,
     linger: Object
   },
-  emits: ['cmd'],
+  emits: ['cmd', 'close'],
   setup(props, { emit }) {
     const tab = ref('linger')
     const x = ref(40)
@@ -161,7 +167,7 @@ export default {
     const xyStart = ref(null)
     const xyEnd = ref('')
     const xyEnabled = ref(false)
-    const xyInc = ref(1)
+
 
     const panelStyle = computed(() => ({
       position:'fixed',
@@ -209,69 +215,6 @@ export default {
       emit('cmd', { system: 'linger', cmd, args })
     }
 
-    const setXY = () => {
-      if (!xyEnabled.value) {
-        emit('cmd', {
-          system: 'linger',
-          cmd: 'xy',
-          args: { enabled: false }
-        })
-        return
-      }
-
-      emit('cmd', {
-        system: 'linger',
-        cmd: 'xy',
-        args: {
-          enabled: true,
-          start: xyStart.value,
-          end: xyEnd.value,
-          inc: xyInc.value
-        }
-      })
-    }
-
-    watch(xyEnabled, (val) => {
-      if (!val) {
-        emit('cmd', {
-          system: 'linger',
-          cmd: 'xy',
-          args: { enabled: false }
-        })
-        return
-      }
-
-      emit('cmd', {
-        system: 'linger',
-        cmd: 'xy',
-        args: {
-          enabled: true,
-          start: xyStart.value,
-          end: xyEnd.value,
-          inc: xyInc.value
-        }
-      })
-    })
-
-    const handleKey = (e) => {
-      if (e.key !== 'Enter') return
-
-      if (xyEnabled.value) {
-        emit('cmd', {
-          system: 'linger',
-          cmd: 'xy',
-          args: {
-            enabled: true,
-            start: xyStart.value,
-            end: xyEnd.value,
-            inc: xyInc.value
-          }
-        })
-      }
-
-      emit('cmd', { system: 'ui', cmd: 'closeControlPanel' })
-    }
-
 
 function loadXY(data) {
   if (data.lingerxy) {
@@ -281,9 +224,63 @@ function loadXY(data) {
   } else {
     xyEnabled.value = false
     xyStart.value = null
-    xyEnd.value = null
+    xyEnd.value = ''
   }
 }
+
+function toggleXY() {
+  if (xyEnabled.value) {
+    // TURNING OFF
+    xyEnabled.value = false
+    xyStart.value = null
+    xyEnd.value = ''
+
+    emit('cmd', {
+      system: 'linger',
+      cmd: 'xy',
+      args: {
+        lingerxy: false,
+        lingerx: 0,
+        lingery: 0,
+        xyinc: false
+      }
+    })
+
+    return
+  }
+
+  const x = Number(xyStart.value)
+  if (!Number.isInteger(x) || x < 0) return
+
+  const rawY = String(xyEnd.value).trim()
+  if (!rawY) return
+
+  const hasPlus  = rawY.startsWith('+')
+  const hasMinus = rawY.startsWith('-')
+  const hasSign  = hasPlus || hasMinus
+
+  if ((hasPlus || hasMinus) && rawY.length === 1) return
+
+  const y = Number(rawY)
+  if (!Number.isInteger(y)) return
+
+  // reject +0 / -0
+  if (hasSign && y === 0) return
+
+  xyEnabled.value = true
+
+  emit('cmd', {
+    system: 'linger',
+    cmd: 'xy',
+    args: {
+      lingerxy: true,
+      lingerx: x,
+      lingery: y,
+      xyinc: hasSign
+    }
+  })
+}
+
 
 function toggleBlocklimit() {
   blockEnabled.value = !blockEnabled.value
@@ -310,6 +307,15 @@ watch(() => props.linger?.blocklimit, (val) => {
     blockEnabled.value = val > 0
   }
 })
+
+watch(() => props.linger,
+  (val) => {
+    if (!val) return
+    loadXY(val)
+  },
+  { immediate: true, deep: true }
+)
+
 watch(blocklimit, (val) => {
   if (val === 0 && blockEnabled.value) {
     blockEnabled.value = false
@@ -321,23 +327,19 @@ watch(blocklimit, (val) => {
     })
   }
 })
-    onMounted(() => window.addEventListener('keydown', handleKey))
-    onUnmounted(() => window.removeEventListener('keydown', handleKey))
 
     return {
       tab,
       panelStyle,
       tabStyle,
       startDrag,
-      blocklimit,
       limit,
       count,
       xyStart,
       xyEnd,
       xyEnabled,
-      xyInc,
+      toggleXY,
       emitCmd,
-      setXY,
       blocklimit,
       blockEnabled,
       toggleBlocklimit

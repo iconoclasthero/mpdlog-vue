@@ -34,6 +34,10 @@
       </em></strong>
     </span>
     <br>
+    <span v-if="showPath" class="album file-path">
+      {{ next.file }}
+    </span>
+    <br v-if="showPath">
   </div>
 </template>
 
@@ -43,7 +47,8 @@ import { computed } from 'vue'
 export default {
   name: 'NextTrack',
   props: {
-    next: Object
+    next: Object,
+    showPath: Boolean
   },
   emits: ['action'],
   setup(props) {

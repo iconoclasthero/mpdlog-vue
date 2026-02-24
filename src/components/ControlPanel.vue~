@@ -32,26 +32,32 @@
                style="width:70px; padding:2px 4px;">
         <label style="display:flex; align-items:center; cursor:pointer;">
           <input type="checkbox"
+                 @change="toggleBlocklimit"
                  style="display:none">
 
-          <span style="
-            width:42px;
-            height:22px;
-            border-radius:11px;
-            position:relative;
-            background:#ccc;
-            transition:0.2s;
-          ">
+          <span
+            :style="{ background: blockEnabled ? '#4ade80' : '#ccc' }"
 
-            <span style="
-              position:absolute;
-              top:3px;
-              left:3px;
-              width:16px;
-              height:16px;
-              background:white;
-              border-radius:50%;
+            style="
+              width:42px;
+              height:22px;
+              border-radius:11px;
+              position:relative;
               transition:0.2s;
+            ">
+
+
+            <span
+              :style="{ transform: blockEnabled ? 'translateX(20px)' : 'translateX(0)' }"
+              style="
+                position:absolute;
+                top:3px;
+                left:3px;
+                  width:16px;
+                height:16px;
+                background:white;
+                border-radius:50%;
+                transition:0.2s;
             ">
             </span>
           </span>
@@ -149,10 +155,11 @@ export default {
     const dragging = ref(false)
 
     const blocklimit = ref(0)
+    const blockEnabled = ref(false)
     const limit = ref(0)
     const count = ref(0)
-    const xyStart = ref(0)
-    const xyEnd = ref(0)
+    const xyStart = ref(null)
+    const xyEnd = ref('')
     const xyEnabled = ref(false)
     const xyInc = ref(1)
 
@@ -265,16 +272,55 @@ export default {
       emit('cmd', { system: 'ui', cmd: 'closeControlPanel' })
     }
 
-    function toggleBlocklimit(e) {
-      if (e.target.checked) {
-        if (blocklimit.value <= 0) blocklimit.value = 1
-        emit('cmd', { cmd: 'blocklimit', arg: blocklimit.value })
-      } else {
-        blocklimit.value = 0
-        emit('cmd', { cmd: 'blocklimit', arg: 0 })
-      }
-    }
 
+function loadXY(data) {
+  if (data.lingerxy) {
+    xyEnabled.value = true
+    xyStart.value = data.lingerx
+    xyEnd.value = data.lingery
+  } else {
+    xyEnabled.value = false
+    xyStart.value = null
+    xyEnd.value = null
+  }
+}
+
+function toggleBlocklimit() {
+  blockEnabled.value = !blockEnabled.value
+
+  if (blockEnabled.value) {
+    emit('cmd', {
+      system: 'linger',
+      cmd: 'blocklimit',
+      args: blocklimit.value
+    })
+  } else {
+    blocklimit.value = 0
+    emit('cmd', {
+      system: 'linger',
+      cmd: 'blocklimit',
+      args: 0
+    })
+  }
+}
+
+watch(() => props.linger?.blocklimit, (val) => {
+  if (typeof val === 'number') {
+    blocklimit.value = val
+    blockEnabled.value = val > 0
+  }
+})
+watch(blocklimit, (val) => {
+  if (val === 0 && blockEnabled.value) {
+    blockEnabled.value = false
+
+    emit('cmd', {
+      system: 'linger',
+      cmd: 'blocklimit',
+      args: 0
+    })
+  }
+})
     onMounted(() => window.addEventListener('keydown', handleKey))
     onUnmounted(() => window.removeEventListener('keydown', handleKey))
 
@@ -293,7 +339,9 @@ export default {
       emitCmd,
       setXY,
       blocklimit,
+      blockEnabled,
       toggleBlocklimit
+
     }
   }
 }

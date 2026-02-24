@@ -17,6 +17,7 @@
       :next="next"
       :linger="linger"
       :send-command="sendWebSocketCommand"
+      :showPath="showPath"
       @action="handleAction"
     />
 
@@ -31,6 +32,7 @@
     <NextTrack 
       v-if="next"
       :next="next"
+      :showPath="showPath"
       @action="handleAction"
     />
 
@@ -39,6 +41,7 @@
       v-if="logEntries.length > 0"
       :entries="logEntries"
       :view-mode="viewMode"
+      :showPath="showPath"
     />
 
     <!-- Navigation Buttons -->
@@ -83,11 +86,11 @@
 </button>
 
 <ControlPanel
-  :linger="linger"
   :visible="showPanel"
+  :linger="linger"
   @cmd="sendWebSocketCommand"
+  @close="showPanel = false"
 />
-
   </div>
 
 </template>
@@ -120,6 +123,7 @@ export default {
     const showBackTop = ref(false)
     const showPanel = ref(false)
     const activeTab = ref('linger')
+    const showPath = ref(false)
 
     // NEW FLAG TO PREVENT INITIAL LOG REQUEST
     let initialLoadDone = false
@@ -412,6 +416,12 @@ const handleKeydown = (ev) => {
     ev.preventDefault()
     showPanel.value = !showPanel.value
   }
+
+  if (ev.altKey && ev.key.toLowerCase() === 'p') {
+    ev.preventDefault()
+    showPath.value = !showPath.value
+  }
+
 }
 
 //    onMounted(() => {
@@ -460,7 +470,7 @@ onUnmounted(() => {
     return {
       status, current, next, linger, logEntries, viewMode, albumArtData, 
       handleAction, changeView, sendWebSocketCommand, blockLimitPrompt, 
-      showBackTop, goTop, showPanel
+      showBackTop, goTop, showPanel, showPath
     }
   }
 }
