@@ -9,6 +9,16 @@
     </h1>
     <hr>
 
+    <!-- Progress Circle -->
+    <ProgressCircle
+      v-if="status"
+      :status="status"
+      :elapsed="status.player.elapsed"
+      :duration="status.player.duration"
+      :color="ringColor"
+      img-src="/android-icon-96x96.png"
+    />
+
     <!-- Currently Playing Section -->
     <CurrentlyPlaying 
       v-if="status"
@@ -64,7 +74,7 @@
   border-radius: 4px;
   cursor: pointer;
   display: none;
-">↑ Top</button> -->
+">↑ Top</button> 
 
 <button
   v-show="showBackTop"
@@ -83,7 +93,10 @@
   "
 >
   ↑ Top
-</button>
+</button> -->
+
+    <!-- Back-to-Top Button -->
+    <BackToTop :show="showBackTop" />
 
 <ControlPanel
   :visible="showPanel"
@@ -103,10 +116,12 @@ import NextTrack from './components/NextTrack.vue'
 import LogSection from './components/LogSection.vue'
 import NavButtons from './components/NavButtons.vue'
 import ControlPanel from './components/ControlPanel.vue'
+import BackToTop from './components/BackToTop.vue'
+import ProgressCircle from './components/ProgressCircle.vue'
 
 export default {
   name: 'App',
-  components: { CurrentlyPlaying, AlbumArt, NextTrack, LogSection, NavButtons, ControlPanel },
+  components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, NavButtons, BackToTop, ControlPanel },
   setup() {
     const ws = ref(null)
     const status = ref(null)
@@ -120,10 +135,12 @@ export default {
     const albumArtData = ref(null)
     const lastAlbumKey = ref(null)
     const lastFile = ref(null)
-    const showBackTop = ref(false)
+//    const showBackTop = ref(false)
     const showPanel = ref(false)
     const activeTab = ref('linger')
     const showPath = ref(false)
+    const ringColor = ref('#d94031')
+
 
     // NEW FLAG TO PREVENT INITIAL LOG REQUEST
     let initialLoadDone = false
@@ -389,9 +406,9 @@ export default {
 //      }
 //    }
 
-    const handleScroll = () => {
-      showBackTop.value = window.scrollY > 100
-    }
+//    const handleScroll = () => {
+//      showBackTop.value = window.scrollY > 100
+//    }
 
     const goTop = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -448,7 +465,7 @@ onMounted(() => {
   connectWebSocket()
   document.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener('focus', handleFocus)
-  window.addEventListener('scroll', handleScroll)
+//  window.addEventListener('scroll', handleScroll)
 
   // --- attach keydown listener for multiple shortcuts ---
   window.addEventListener('keydown', handleKeydown)
@@ -470,7 +487,7 @@ onUnmounted(() => {
     return {
       status, current, next, linger, logEntries, viewMode, albumArtData, 
       handleAction, changeView, sendWebSocketCommand, blockLimitPrompt, 
-      showBackTop, goTop, showPanel, showPath
+      showBackTop: true, goTop, showPanel, showPath, ringColor
     }
   }
 }
