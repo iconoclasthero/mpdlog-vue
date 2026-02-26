@@ -87,7 +87,7 @@
       <a href="#" @click.prevent="$emit('action', 'mute_volume')">volume</a>: {{ status.player.volume }}%
       <span>
         <a href="#"
-           class="repeat-toggle"
+           class="repeat-toggle" style="font-style:normal"
            :class="{ active: status.player.repeat }"
            @click.prevent="$emit('action', 'toggle_repeat')">⟳ </a>
       </span>
@@ -182,11 +182,11 @@ export default {
       const year = props.current?.year?.split('-')[0] || ''
       return `${album.replace(' (mp3)','')} ${year ? `(${year})` : ''}`
     })
-    const repeatIcon = computed(() => '⟳ ')
+//    const repeatIcon = computed(() => '⟳ ')  // probably not being used; this "icon" is always on, it's jsut a matter of turning green on in the template.
     const singleIcon = computed(() => props.status?.player?.single ? '✅' : '')
     const randomIcon = computed(() => props.status?.player?.random ? ' ✅' : ' ❌')
     const consumeIcon = computed(() => props.status?.player?.consume ? ' ✅' : ' ❌')
-    const lingerXY = computed(() => '') 
+    const lingerXY = computed(() => '')   // probably not being used and almost assuredly meaningless since it always resolves to ''
 
     const sec2mmss = (s) => {
       const total = Math.floor(s)
@@ -222,13 +222,18 @@ export default {
     onUnmounted(() => { if(timerInterval.value) clearInterval(timerInterval.value) })
 
     return { stateText,colorClass,altClass,toggleIcon,disc,track,albumDisplay,
-             repeatIcon,singleIcon,randomIcon,consumeIcon,elapsedDisplay,totalDisplay,
+             singleIcon,randomIcon,consumeIcon,elapsedDisplay,totalDisplay,
              percentDisplay,percentValue,lingerXY, lingerStat,
            }
   }
 }
 </script>
 
+<style scoped>
+.repeat-toggle.active {
+  color: #22c55e;
+}
+</style>
 
 <!--
 writetime=2026-02-21T17:23:43.121311908-05:00
