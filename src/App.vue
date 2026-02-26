@@ -1,24 +1,56 @@
 <template>
   <div>
     <!-- Header -->
-    <a class="hidden-link" href="http://iconoclasthero.com:8000">
+<!--    <a class="hidden-link" href="http://iconoclasthero.com:8000">
       <img src="/android-icon-96x96.png" style="display: inline; vertical-align: top;">
     </a>
     <h1 style="display: inline; vertical-align: bottom;">
       &nbsp;&nbsp;<a class="hidden-link" href="/">mpdlog</a>
     </h1>
-    <hr>
+    <hr> -->
+
+<div style="display: flex; align-items: center; gap: 16px;">
+  <div style="position:relative; cursor:pointer;">
+    <ProgressCircle
+      v-if="status"
+      :elapsed="status.player.elapsed"
+      :duration="status.player.duration"
+      :color="ringColor"
+      :playing="status.player.state==='play'"
+      img-src="/android-icon-96x96.png"
+      @seek="seekTo"
+    />
+
+     <!-- Icecast link overlay -->
+     <a
+       href="http://iconoclasthero.com:8000"
+       target="_blank"
+       style="position:absolute; bottom:4px; right:4px; font-size:10px;"
+     >
+       🔊
+    </a>
+   </div>
+
+  <h1 style="margin: 0;">
+    <a class="hidden-link" href="/">mpdlog</a>
+  </h1>
+</div>
+<br>
+
 
     <!-- Progress Circle -->
+<!--
     <ProgressCircle
       v-if="status"
       :status="status"
       :elapsed="status.player.elapsed"
       :duration="status.player.duration"
       :color="ringColor"
+      :playing="status.player.state==='play'"
       img-src="/android-icon-96x96.png"
+      @seek="seekTo"
     />
-
+-->
     <!-- Currently Playing Section -->
     <CurrentlyPlaying 
       v-if="status"
@@ -85,7 +117,8 @@
     right: 20px;
     padding: 18px 12px;
 /*    background: #007bff; */
-    background: #d94031;
+    background: #d94031; */
+    background: #d73e30;
     color: #fff;
     border: none;
     border-radius: 90px;
@@ -139,7 +172,8 @@ export default {
     const showPanel = ref(false)
     const activeTab = ref('linger')
     const showPath = ref(false)
-    const ringColor = ref('#d94031')
+//    const ringColor = ref('#d94031')
+    const ringColor = ref('#d73e30')
 
 
     // NEW FLAG TO PREVENT INITIAL LOG REQUEST
@@ -398,6 +432,16 @@ export default {
       }
     }
 
+    const seekTo = (seconds) => {
+      const payload = {
+        system: "mpd",
+        cmd: "seek",
+        args: Math.floor(seconds)
+      }
+
+      ws.value.send(JSON.stringify(payload))
+    }
+
 //    const handleKeydown = (ev) => {
 //      // Alt+B → blocklimit modal
 //      if (ev.altKey && ev.key.toLowerCase() === 'b') {
@@ -487,7 +531,7 @@ onUnmounted(() => {
     return {
       status, current, next, linger, logEntries, viewMode, albumArtData, 
       handleAction, changeView, sendWebSocketCommand, blockLimitPrompt, 
-      showBackTop: true, goTop, showPanel, showPath, ringColor
+      showBackTop: true, goTop, showPanel, showPath, ringColor, seekTo
     }
   }
 }

@@ -40,8 +40,8 @@
         elapsed <span id="elapsed_display">{{ elapsedDisplay }}</span>/<span id="total_display">{{ totalDisplay }}</span> 
         (<span id="percent_display">{{ percentDisplay }}</span>%)
       </a>
-      <br>
-      <progress id="track_progress" :value="percentValue" max="100"></progress>
+<!--      <br>
+      <progress id="track_progress" :value="percentValue" max="100"></progress> -->
     </span>
     <br>
 
