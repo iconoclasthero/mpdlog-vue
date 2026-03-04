@@ -41,7 +41,7 @@
                style="display:none">
 
           <span
-            :style="{ background: blockEnabled ? '#4ade80' : '#ccc' }"
+            :style="{ background: blockEnabled ? '#d73e30' : '#ccc' }"
             style="
               width:42px;
               height:22px;
@@ -107,7 +107,7 @@
                      @change="toggleXY"
                      style="display:none">
               <span
-                :style="{ background: xyEnabled ? '#4ade80' : '#ccc' }"
+                :style="{ background: xyEnabled ? '#d73e30' : '#ccc' }"
                 style="
                   width:40px;
                   height:20px;
@@ -216,117 +216,117 @@ export default {
     }
 
 
-function loadXY(data) {
-  if (data.lingerxy) {
-    xyEnabled.value = true
-    xyStart.value = data.lingerx
-    xyEnd.value = data.lingery
-  } else {
-    xyEnabled.value = false
-    xyStart.value = null
-    xyEnd.value = ''
-  }
-}
+    function loadXY(data) {
+      if (data.lingerxy) {
+        xyEnabled.value = true
+        xyStart.value = data.lingerx
+        xyEnd.value = data.lingery
+      } else {
+        xyEnabled.value = false
+        xyStart.value = null
+        xyEnd.value = ''
+      }
+    }
 
-function toggleXY() {
-  if (xyEnabled.value) {
-    // TURNING OFF
-    xyEnabled.value = false
-    xyStart.value = null
-    xyEnd.value = ''
+    function toggleXY() {
+      if (xyEnabled.value) {
+        // TURNING OFF
+        xyEnabled.value = false
+        xyStart.value = null
+        xyEnd.value = ''
 
-    emit('cmd', {
-      system: 'linger',
-      cmd: 'xy',
-      args: {
-        lingerxy: false,
-        lingerx: 0,
-        lingery: 0,
-        xyinc: false
+        emit('cmd', {
+          system: 'linger',
+          cmd: 'xy',
+          args: {
+            lingerxy: false,
+            lingerx: 0,
+            lingery: 0,
+            xyinc: false
+          }
+        })
+
+        return
+      }
+
+      const x = Number(xyStart.value)
+      if (!Number.isInteger(x) || x < 0) return
+
+      const rawY = String(xyEnd.value).trim()
+      if (!rawY) return
+
+      const hasPlus  = rawY.startsWith('+')
+      const hasMinus = rawY.startsWith('-')
+      const hasSign  = hasPlus || hasMinus
+
+      if ((hasPlus || hasMinus) && rawY.length === 1) return
+
+      const y = Number(rawY)
+      if (!Number.isInteger(y)) return
+
+      // reject +0 / -0
+      if (hasSign && y === 0) return
+
+      xyEnabled.value = true
+
+      emit('cmd', {
+        system: 'linger',
+        cmd: 'xy',
+        args: {
+          lingerxy: true,
+          lingerx: x,
+          lingery: y,
+          xyinc: hasSign
+        }
+      })
+    }
+
+
+    function toggleBlocklimit() {
+      blockEnabled.value = !blockEnabled.value
+
+      if (blockEnabled.value) {
+        emit('cmd', {
+          system: 'linger',
+          cmd: 'blocklimit',
+          args: blocklimit.value
+        })
+      } else {
+        blocklimit.value = 0
+        emit('cmd', {
+          system: 'linger',
+          cmd: 'blocklimit',
+          args: 0
+        })
+      }
+    }
+
+    watch(() => props.linger?.blocklimit, (val) => {
+      if (typeof val === 'number') {
+        blocklimit.value = val
+        blockEnabled.value = val > 0
       }
     })
 
-    return
-  }
+    watch(() => props.linger,
+      (val) => {
+        if (!val) return
+        loadXY(val)
+      },
+      { immediate: true, deep: true }
+    )
 
-  const x = Number(xyStart.value)
-  if (!Number.isInteger(x) || x < 0) return
+    watch(blocklimit, (val) => {
+      if (val === 0 && blockEnabled.value) {
+        blockEnabled.value = false
 
-  const rawY = String(xyEnd.value).trim()
-  if (!rawY) return
-
-  const hasPlus  = rawY.startsWith('+')
-  const hasMinus = rawY.startsWith('-')
-  const hasSign  = hasPlus || hasMinus
-
-  if ((hasPlus || hasMinus) && rawY.length === 1) return
-
-  const y = Number(rawY)
-  if (!Number.isInteger(y)) return
-
-  // reject +0 / -0
-  if (hasSign && y === 0) return
-
-  xyEnabled.value = true
-
-  emit('cmd', {
-    system: 'linger',
-    cmd: 'xy',
-    args: {
-      lingerxy: true,
-      lingerx: x,
-      lingery: y,
-      xyinc: hasSign
-    }
-  })
-}
-
-
-function toggleBlocklimit() {
-  blockEnabled.value = !blockEnabled.value
-
-  if (blockEnabled.value) {
-    emit('cmd', {
-      system: 'linger',
-      cmd: 'blocklimit',
-      args: blocklimit.value
+        emit('cmd', {
+          system: 'linger',
+          cmd: 'blocklimit',
+          args: 0
+        })
+      }
     })
-  } else {
-    blocklimit.value = 0
-    emit('cmd', {
-      system: 'linger',
-      cmd: 'blocklimit',
-      args: 0
-    })
-  }
-}
-
-watch(() => props.linger?.blocklimit, (val) => {
-  if (typeof val === 'number') {
-    blocklimit.value = val
-    blockEnabled.value = val > 0
-  }
-})
-
-watch(() => props.linger,
-  (val) => {
-    if (!val) return
-    loadXY(val)
-  },
-  { immediate: true, deep: true }
-)
-
-watch(blocklimit, (val) => {
-  if (val === 0 && blockEnabled.value) {
-    blockEnabled.value = false
-
-    emit('cmd', {
-      system: 'linger',
-      cmd: 'blocklimit',
-      args: 0
-    })
-  }
-})
 
     return {
       tab,

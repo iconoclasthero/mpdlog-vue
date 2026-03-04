@@ -182,7 +182,7 @@ export default {
       const year = props.current?.year?.split('-')[0] || ''
       return `${album.replace(' (mp3)','')} ${year ? `(${year})` : ''}`
     })
-//    const repeatIcon = computed(() => '⟳ ')  // probably not being used; this "icon" is always on, it's jsut a matter of turning green on in the template.
+    const repeatIcon = computed(() => '⟳ ')  // probably not being used; this "icon" is always on, it's jsut a matter of turning green on in the template.
     const singleIcon = computed(() => props.status?.player?.single ? '✅' : '')
     const randomIcon = computed(() => props.status?.player?.random ? ' ✅' : ' ❌')
     const consumeIcon = computed(() => props.status?.player?.consume ? ' ✅' : ' ❌')
@@ -223,7 +223,7 @@ export default {
 
     return { stateText,colorClass,altClass,toggleIcon,disc,track,albumDisplay,
              singleIcon,randomIcon,consumeIcon,elapsedDisplay,totalDisplay,
-             percentDisplay,percentValue,lingerXY, lingerStat,
+             percentDisplay,percentValue,lingerXY, lingerStat, repeatIcon
            }
   }
 }

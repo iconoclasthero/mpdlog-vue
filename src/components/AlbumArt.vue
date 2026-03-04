@@ -1,4 +1,4 @@
-<template>
+/<template>
   <div class="album-art-container">
     <img
       v-if="albumArtData"
@@ -11,14 +11,25 @@
       <p>Loading album art...</p>
     </div>
 
+<!--
     <div v-else-if="backupUrl" class="musicdna-placeholder" :style="{ width: maxWidth }">
       <img :src="backupUrl" alt="Backup Album Art" style="width: 100%; height: auto;">
       <p>No album art available, showing backup</p>
     </div>
+-->
+
+    <div v-else-if="isDead" class="musicdna-placeholder" :style="{ width: maxWidth }">
+      <img :src="deadSVGurl" alt="Grateful Dead SVG" style="width: 100%; height: auto;">
+    </div>
 
     <div v-else class="musicdna-placeholder" :style="{ width: maxWidth }">
+      <img src="../../assets/musicdna.svg" alt="MusicDNA" style="width: 100%; height: auto;">
+    </div>
+
+<!--    <div v-else class="musicdna-placeholder" :style="{ width: maxWidth }"> 
       <p>No album art available</p>
     </div>
+-->
   </div>
   <hr>
 </template>
@@ -28,13 +39,15 @@ export default {
   name: 'AlbumArt',
   props: {
     albumArtData: String,
-    artist: String
+    artist: String,
+    mbArtistID: String
   },
   data() {
     return {
       isLoading: false,
       maxWidth: '300px', // fallback default; will measure dynamically on mount
-      backupUrl: null
+      deadSVGurl: null,
+      isDead: false
     }
   },
   mounted() {
@@ -46,16 +59,32 @@ export default {
       }
     })
 
-    // Determine backup URL based on artist
-    if (this.artist) {
-      const normalized = this.artist.toLowerCase().replace(/\s+/g, '_')
-      const deadFolder = ['grateful_dead', 'dead'] // example folder names
-      if (deadFolder.includes(normalized)) {
-        this.backupUrl = '/dead/dead.png'
-      } else {
-        // fallback to generic png/svg
-        this.backupUrl = `/backup/${normalized}.png`
-      }
+//    // Determine backup URL based on artist
+//    if (this.artist) {
+//      const normalized = this.artist.toLowerCase().replace(/\s+/g, '_')
+//      const deadFolder = ['grateful_dead', 'dead'] // example folder names
+//      if (deadFolder.includes(normalized)) {
+//        this.backupUrl = '/dead/dead.png'
+//      } else {
+//        // fallback to generic png/svg
+//        this.backupUrl = `/backup/${normalized}.png`
+//      }
+//    }
+    // Grateful Dead SVG fallback logic
+    if (
+      (this.artist && this.artist.includes('Grateful Dead')) ||
+      this.mbArtistId === '6faa7ca7-0d99-4a5e-bfa6-1fd5037520c6'
+    ) {
+      this.isDead = true
+
+      // randomly select one svg from /assets/dead/
+      const modules = import.meta.glob('../../assets/dead/*.svg', { eager: true })
+      const paths = Object.values(modules).map(m => m.default)
+
+//       this.deadSVGurl = deadSVGs[Math.floor(Math.random() * deadSVGs.length)]
+       if (paths.length > 0) {
+         this.deadSvgUrl = paths[Math.floor(Math.random() * paths.length)]
+       }
     }
   }
 }

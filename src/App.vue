@@ -68,6 +68,7 @@
       v-if="current"
       :artist="current.artist"
       :album-art-data="albumArtData"
+      :mbArtistID="current.musicbrainz_artistid"
     />
 
     <!-- Next Track -->
@@ -168,13 +169,15 @@ export default {
     const albumArtData = ref(null)
     const lastAlbumKey = ref(null)
     const lastFile = ref(null)
-//    const showBackTop = ref(false)
+//  const showBackTop = ref(false)
     const showPanel = ref(false)
     const activeTab = ref('linger')
     const showPath = ref(false)
-//    const ringColor = ref('#d94031')
+//  const ringColor = ref('#d94031')
     const ringColor = ref('#d73e30')
+    const logBuffer = []
 
+    let logFlushTimer = null
 
     // NEW FLAG TO PREVENT INITIAL LOG REQUEST
     let initialLoadDone = false
@@ -202,6 +205,8 @@ export default {
       }
 
       const wsUrl = 'ws://192.168.1.2:8008/ws'
+//    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+//    const wsUrl = `${protocol}//${window.location.host}/ws`
       console.log('Connecting to WebSocket:', wsUrl)
       ws.value = new WebSocket(wsUrl)
 
@@ -345,10 +350,26 @@ export default {
         }
       }
 
-      if (data.timestamps && data.action) {
-        logEntries.value.push(data)
-        if (logEntries.value.length > 24) logEntries.value = logEntries.value.slice(-24)
-      }
+//      if (data.timestamps && data.action) {
+//        logEntries.value.push(data)
+//        if (logEntries.value.length > 24) logEntries.value = logEntries.value.slice(-24)
+//      }
+
+  if (data.timestamps && data.action) {
+    // Add to buffer instead of pushing immediately
+    logBuffer.push(data)
+
+    if (!logFlushTimer) {
+      logFlushTimer = setTimeout(() => {
+        logEntries.value.push(...logBuffer)
+        if (logEntries.value.length > 24) {
+          logEntries.value = logEntries.value.slice(-24)
+        }
+        logBuffer.length = 0
+        logFlushTimer = null
+      }, 50) // 50ms is small enough to be imperceptible
+    }
+  }
     }
 
     // -------------------------------
@@ -458,32 +479,32 @@ export default {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
-const refreshAlbumArt = (file) => {
-  logAndSend(JSON.stringify({ system: 'albumart', cmd: 'get', args: file }))
-}
+    const refreshAlbumArt = (file) => {
+      logAndSend(JSON.stringify({ system: 'albumart', cmd: 'get', args: file }))
+    }
 
-// Unified keydown handler
-const handleKeydown = (ev) => {
-  const key = ev.key.toLowerCase()
+    // Unified keydown handler
+    const handleKeydown = (ev) => {
+      const key = ev.key.toLowerCase()
 
-  // Alt+B → blocklimit modal
-  if (ev.altKey && key === 'b') {
-    ev.preventDefault()
-    blockLimitPrompt()
-  }
+      // Alt+B → blocklimit modal
+      if (ev.altKey && key === 'b') {
+        ev.preventDefault()
+        blockLimitPrompt()
+      }
 
-  // Alt+C → toggle ControlPanel
-  if (ev.altKey && key === 'c') {
-    ev.preventDefault()
-    showPanel.value = !showPanel.value
-  }
+      // Alt+C → toggle ControlPanel
+      if (ev.altKey && key === 'c') {
+        ev.preventDefault()
+        showPanel.value = !showPanel.value
+      }
 
-  if (ev.altKey && ev.key.toLowerCase() === 'p') {
-    ev.preventDefault()
-    showPath.value = !showPath.value
-  }
+      if (ev.altKey && ev.key.toLowerCase() === 'p') {
+        ev.preventDefault()
+        showPath.value = !showPath.value
+      }
 
-}
+    }
 
 //    onMounted(() => {
 //      connectWebSocket()
