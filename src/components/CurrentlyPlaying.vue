@@ -157,6 +157,7 @@
 
 <script>
 import { ref, computed, watch, onUnmounted } from 'vue'
+import { sec2sex } from '@/utils/time.js'
 
 export default {
   name: 'CurrentlyPlaying',
@@ -188,15 +189,18 @@ export default {
     const consumeIcon = computed(() => props.status?.player?.consume ? ' ✅' : ' ❌')
     const lingerXY = computed(() => '')   // probably not being used and almost assuredly meaningless since it always resolves to ''
 
-    const sec2mmss = (s) => {
-      const total = Math.floor(s)
-      const h = Math.floor(total / 3600)
-      const m = Math.floor((total % 3600) / 60)
-      const sec = total % 60
-      return h > 0 ? `${h}:${m<10?'0':''}${m}:${sec<10?'0':''}${sec}` : `${m}:${sec<10?'0':''}${sec}`
-    }
-    const elapsedDisplay = computed(() => sec2mmss(elapsed.value))
-    const totalDisplay = computed(() => sec2mmss(props.status?.player?.duration || 0))
+//    const sec2mmss = (s) => {
+//      const total = Math.floor(s)
+//      const h = Math.floor(total / 3600)
+//      const m = Math.floor((total % 3600) / 60)
+//      const sec = total % 60
+//      return h > 0 ? `${h}:${m<10?'0':''}${m}:${sec<10?'0':''}${sec}` : `${m}:${sec<10?'0':''}${sec}`
+//    }
+
+//    const elapsedDisplay = computed(() => sec2mmss(elapsed.value))
+//    const totalDisplay = computed(() => sec2mmss(props.status?.player?.duration || 0))
+    const elapsedDisplay = computed (() => sec2sex(elapsed.value || 0))
+    const totalDisplay = computed(() => sec2sex(props.status?.player?.duration || 0))
     const percentDisplay = computed(() => Math.floor((elapsed.value/(props.status?.player?.duration||1))*100))
     const percentValue = computed(() => percentDisplay.value)
 

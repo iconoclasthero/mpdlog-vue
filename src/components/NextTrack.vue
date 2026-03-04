@@ -5,7 +5,9 @@
         ✨</em><a href="#" @click.prevent="$emit('action', 'next_track')" title="Play next song">
           Next in queue
         </a><em>✨</em></strong>&nbsp;
-      <a href="#" @click.prevent="$emit('action', 'playlist_current')" title="Playlist|current song">
+<!--      <a href="#" @click.prevent="$emit('action', 'playlist_current')" title="Playlist|current song"> -->
+        <a href="#" @click.prevent="$emit('action', { type: 'playlist_current', n: null })" title="Playlist|current song">
+
         <i class="bi bi-box-arrow-up-right extlink"></i>
       </a>
     </span>
@@ -43,6 +45,7 @@
 
 <script>
 import { computed } from 'vue'
+import { sec2sex } from '@/utils/time.js'
 
 export default {
   name: 'NextTrack',
@@ -60,12 +63,14 @@ export default {
       return String(props.next?.track || '0').padStart(2, '0')
     })
 
-    const duration = computed(() => {
-      const totalSec = Math.floor(parseFloat(props.next?.duration || 0))
-      const m = Math.floor(totalSec / 60)
-      const s = totalSec % 60
-      return `${m}:${s < 10 ? '0' : ''}${s}`
-    })
+//    const duration = computed(() => {
+//      const totalSec = Math.floor(parseFloat(props.next?.duration || 0))
+//      const m = Math.floor(totalSec / 60)
+//      const s = totalSec % 60
+//      return `${m}:${s < 10 ? '0' : ''}${s}`
+//    })
+
+    const duration = computed (() => sec2sex(props.next?.duration || 0))
 
     const albumDisplay = computed(() => {
       const album = props.next?.album || ''

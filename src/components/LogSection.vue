@@ -83,6 +83,7 @@
 
 <script>
 import { computed } from 'vue'
+import { sec2sex } from '@/utils/time.js'
 
 export default {
   name: 'LogSection',
@@ -100,12 +101,15 @@ export default {
       return String(track || '0').padStart(2, '0')
     }
 
-    const formatDuration = (duration) => {
-      const totalSec = Math.floor(parseFloat(duration || 0))
-      const m = Math.floor(totalSec / 60)
-      const s = totalSec % 60
-      return `${m}:${s < 10 ? '0' : ''}${s}`
-    }
+//    const formatDuration = (duration) => {
+//      const totalSec = Math.floor(parseFloat(duration || 0))
+//      const m = Math.floor(totalSec / 60)
+//      const s = totalSec % 60
+//      return `${m}:${s < 10 ? '0' : ''}${s}`
+//    }
+
+    const formatDuration = (duration) => sec2sex(duration || 0)
+//  const formatDuration = sec2sex(parseFloat(duration || 0))
 
     const formatAlbum = (album, year) => {
       const cleanAlbum = album?.replace(' (mp3)', '') || ''

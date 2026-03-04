@@ -1,6 +1,6 @@
 <template>
   <div>
-    <hr>
+  <hr style="background-color:#912715">
     <div class="button-container">
       <!-- MPD Controls -->
       <div class="button-row d-flex gap-2 align-items-center">

@@ -92,13 +92,15 @@
       v-if="viewMode === 'album'"
       :current-position="current?.song_position"
     />
-<!--      :albumkey="currentAlbumKey" -->
-<!--
-    <PlaylistWindow
+
+    <PlaylistCurrent
       v-if="viewMode === 'current'"
+      :songs="playlistCurrentSongs"
+      :currentPosition="current?.song_position"
+      :playlistCurrentN="playlistCurrentN"
       :radius="3"
+      @action="handleAction"
     />
--->
 
     <!-- Navigation Buttons -->
     <NavButtons
@@ -148,6 +150,8 @@
 <ControlPanel
   :visible="showPanel"
   :linger="linger"
+  :currentWindowSize="playlistCurrentN"
+  @update-current-window="setPlaylistCurrentN"
   @cmd="sendWebSocketCommand"
   @close="showPanel = false"
 />
@@ -166,10 +170,11 @@ import ControlPanel from './components/ControlPanel.vue'
 import BackToTop from './components/BackToTop.vue'
 import ProgressCircle from './components/ProgressCircle.vue'
 import PlaylistAlbum from './components/PlaylistAlbum.vue'
+import PlaylistCurrent from './components/PlaylistCurrent.vue'
 
 export default {
   name: 'App',
-  components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, PlaylistAlbum, NavButtons, BackToTop, ControlPanel },
+  components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, PlaylistAlbum, PlaylistCurrent, NavButtons, BackToTop, ControlPanel },
   setup() {
     const ws = ref(null)
     const status = ref(null)
@@ -190,6 +195,8 @@ export default {
 //  const ringColor = ref('#d94031')
     const ringColor = ref('#d73e30')
     const logBuffer = []
+    const playlistCurrentN = ref(12)   // the +/- around current playlist so that number of songs is (2*n)+1, e.g., grep -C<n>
+    const playlistCurrentSongs = ref([])
 
     let logFlushTimer = null
 
@@ -260,7 +267,7 @@ export default {
     }
 
     // -------------------------------
-    // Status / log helpers
+    // Status / log / playlist helpers
     // -------------------------------
     const requestStatus = () => {
       if (ws.value && ws.value.readyState === WebSocket.OPEN) {
@@ -273,6 +280,15 @@ export default {
         logAndSend('json-log')
       }
     }
+
+    const setPlaylistCurrentN = (n) => {
+      playlistCurrentN.value = Number(n) || 12
+      handleAction({
+        type: 'playlist_current',
+        n: playlistCurrentN.value
+      })
+    }
+
 
     ////////////////////////////////////////////////////////////////
     //  PERIODIC REFRESH BLOCK:                                   //
@@ -312,8 +328,20 @@ export default {
       }
 
       if (data.system && data.cmd && data.response !== undefined) {
+        if (data.system === 'player' && data.cmd === 'playlist') {
+          if (Array.isArray(data.response)) {
+            playlistCurrentSongs.value = data.response
+          } else {
+            console.error('Invalid playlist response:', data.response)
+            playlistCurrentSongs.value = []
+          }
+//          playlistCurrentSongs.value = data.response || []
+          return
+        }
+
         if (data.system === 'player' && data.cmd === 'togglestate' && status.value) {
           status.value.player.state = data.response
+          return // this was added; should it be there??
         }
         return
       }
@@ -411,9 +439,35 @@ export default {
         return
       }
 
-      if (action === 'playlist_window') {
-        viewMode.value = 'window'
+      if (action === 'playlist_current') {
+        sendCommand(JSON.stringify({
+          system: 'player',
+          cmd: 'playlist',
+          args: { current: playlistCurrentN.value ?? playlistCurrentN.value }
+        }))
+        viewMode.value = 'current'
         return
+      }
+
+      if (typeof action === 'object') {
+        if (action.type === 'playlist_current') {
+          sendCommand(JSON.stringify({
+            system: 'player',
+            cmd: 'playlist',
+            args: { current: action.n ?? playlistCurrentN.value }
+          }))
+          viewMode.value = 'current'
+          return
+        }
+
+        if (action.type === 'pl_number') {
+          sendCommand(JSON.stringify({
+            system: 'player',
+            cmd: 'pl_number',
+            args: action.pos
+          }))
+          return
+        }
       }
       
       const map = {
@@ -591,7 +645,8 @@ onUnmounted(() => {
     return {
       status, current, next, linger, logEntries, viewMode, albumArtData, 
       handleAction, changeView, sendWebSocketCommand, blockLimitPrompt, 
-      showBackTop: true, goTop, showPanel, showPath, ringColor, seekTo
+      showBackTop: true, goTop, showPanel, showPath, ringColor, seekTo,
+      playlistCurrentN, playlistCurrentSongs, setPlaylistCurrentN
     }
   }
 }
