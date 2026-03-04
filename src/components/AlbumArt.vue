@@ -78,12 +78,13 @@ export default {
       this.isDead = true
 
       // randomly select one svg from /assets/dead/
-      const modules = import.meta.glob('../../assets/dead/*.svg', { eager: true })
+//      const modules = import.meta.glob('../../assets/dead/*.svg', { eager: true })
+      const modules = import.meta.glob('./dead/*.svg', { eager: true })
       const paths = Object.values(modules).map(m => m.default)
 
 //       this.deadSVGurl = deadSVGs[Math.floor(Math.random() * deadSVGs.length)]
        if (paths.length > 0) {
-         this.deadSvgUrl = paths[Math.floor(Math.random() * paths.length)]
+         this.deadSVGUrl = paths[Math.floor(Math.random() * paths.length)]
        }
     }
   }

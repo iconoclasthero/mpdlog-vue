@@ -19,7 +19,8 @@
       :playing="status.player.state==='play'"
       img-src="/android-icon-96x96.png"
       @seek="seekTo"
-    />
+      @refresh-status="handleAction('json_status')"
+  />
 
      <!-- Icecast link overlay -->
      <a
@@ -81,11 +82,23 @@
 
     <!-- Log Section -->
     <LogSection 
-      v-if="logEntries.length > 0"
+      v-if="logEntries.length > 0 && (viewMode === 'default' || viewMode === 'log')"
       :entries="logEntries"
       :view-mode="viewMode"
       :showPath="showPath"
     />
+
+    <PlaylistAlbum
+      v-if="viewMode === 'album'"
+      :current-position="current?.song_position"
+    />
+<!--      :albumkey="currentAlbumKey" -->
+<!--
+    <PlaylistWindow
+      v-if="viewMode === 'current'"
+      :radius="3"
+    />
+-->
 
     <!-- Navigation Buttons -->
     <NavButtons
@@ -152,10 +165,11 @@ import NavButtons from './components/NavButtons.vue'
 import ControlPanel from './components/ControlPanel.vue'
 import BackToTop from './components/BackToTop.vue'
 import ProgressCircle from './components/ProgressCircle.vue'
+import PlaylistAlbum from './components/PlaylistAlbum.vue'
 
 export default {
   name: 'App',
-  components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, NavButtons, BackToTop, ControlPanel },
+  components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, PlaylistAlbum, NavButtons, BackToTop, ControlPanel },
   setup() {
     const ws = ref(null)
     const status = ref(null)
@@ -392,6 +406,16 @@ export default {
     // Action handler
     // -------------------------------
     const handleAction = (action) => {
+      if (action === 'playlist_album') {
+        viewMode.value = 'album'
+        return
+      }
+
+      if (action === 'playlist_window') {
+        viewMode.value = 'window'
+        return
+      }
+      
       const map = {
         toggle_playback: JSON.stringify({ system: 'player', cmd: 'togglestate' }),
         next_track: JSON.stringify({ system:'mpd', cmd:'next' }),
@@ -404,7 +428,6 @@ export default {
         toggle_consume: JSON.stringify({ system:'mpd', cmd:'toggleconsume' }),
         toggle_single: JSON.stringify({ system:'mpd', cmd:'togglesingle' }),
         toggle_repeat: JSON.stringify({ system:'mpd', cmd:'togglerepeat' }),
-
         ignore: JSON.stringify({ system:'mpd', cmd:'ignore' }),
         up_volume: JSON.stringify({ system:'pulseaudio', cmd:'up_volume'}),
         down_volume: JSON.stringify({ system:'pulseaudio', cmd:'down_volume'}),
@@ -412,12 +435,28 @@ export default {
         toggle_output: 'toggle-output',
         linger_start: 'linger-start',
         linger_next: JSON.stringify({ system:'linger', cmd:'next' }),
-        linger_toggle: 'toggle'
+        linger_toggle: 'toggle',
+        json_status: 'json-status'
       }
       if (map[action]) sendCommand(map[action])
     }
 
     const changeView = (mode) => { viewMode.value = mode }
+
+
+//  function showAlbumPlaylist() {
+//    viewMode.value = 'album'
+//  }
+//
+//  function showCurrentPlaylist() {
+//    viewMode.value = 'window'
+//  }
+//
+//  function showLog() {
+//    viewMode.value = 'log'
+//  }
+
+
     const handleVisibilityChange = () => {
       if (!document.hidden && isConnected.value) {
         requestStatus()
