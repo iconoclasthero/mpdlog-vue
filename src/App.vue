@@ -91,13 +91,16 @@
     <PlaylistAlbum
       v-if="viewMode === 'album'"
       :current-position="current?.song_position"
+      @action="handleAction"
     />
 
     <PlaylistCurrent
       v-if="viewMode === 'current'"
+      :key="playlistCurrentN"
       :songs="playlistCurrentSongs"
       :currentPosition="current?.song_position"
       :playlistCurrentN="playlistCurrentN"
+      :songID="current?.songID"
       :radius="3"
       @action="handleAction"
     />
@@ -150,7 +153,8 @@
 <ControlPanel
   :visible="showPanel"
   :linger="linger"
-  :currentWindowSize="playlistCurrentN"
+  :playlistCurrentN="playlistCurrentN"
+  @update:playlistCurrentN="val => playlistCurrentN = val"
   @update-current-window="setPlaylistCurrentN"
   @cmd="sendWebSocketCommand"
   @close="showPanel = false"
@@ -431,7 +435,7 @@ export default {
     }
 
     // -------------------------------
-    // Action handler
+    // Action handler @ App.vue
     // -------------------------------
     const handleAction = (action) => {
       if (action === 'playlist_album') {
@@ -460,10 +464,10 @@ export default {
           return
         }
 
-        if (action.type === 'pl_number') {
+        if (action.type === 'playPosition') {
           sendCommand(JSON.stringify({
             system: 'player',
-            cmd: 'pl_number',
+            cmd: 'play',
             args: action.pos
           }))
           return

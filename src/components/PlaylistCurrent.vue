@@ -2,16 +2,24 @@
   <div class="playlist-album">
     <hr style="background-color:#912715">
     <h3 class="pl-head">Playlist @ current song:</h3>
+    <br>
     <ul>
       <li v-for="(albumGroup, aIndex) in groupedSongs" :key="aIndex" style="color:#cbc4b7">
         <strong class="bullet-1">{{ albumGroup.albumartist }} -- {{ albumGroup.album }}</strong>
         <ul>
+<!--
           <li
             v-for="song in albumGroup.songs"
-            :key="song.pos"
-            :class="{ current: song.pos === currentPosition }"
+            :key="song.song_position"
+            :class="{ current: song.song_position === currentPosition }"
           >
-            <a href="#" @click.prevent="playSong(song.pos)" title="Play {{ song.pos }}">
+          -->
+          <li
+            v-for="song in albumGroup.songs"
+            :key="song.songID"
+            :class="{ current: song.songID === songID }"
+          >
+               <a href="#" @click.prevent="playSong(song.song_position)" :title="'Play ' + song.song_position">
               <strong>{{ song.artist }}</strong> – {{ song.disc }}-{{ song.track }} - {{ song.title }} [{{ sec2sex(song.time) }}]
             </a>
           </li>
@@ -27,18 +35,20 @@ import { sec2sex } from '@/utils/time.js'
 
 export default {
   name: 'PlaylistCurrent',
-  methods: { sec2sex },
   props: {
     songs: { type: Array, required: true },
     currentPosition: Number,
-    playlistCurrentN: { type: Number, required: true }
+    playlistCurrentN: { type: Number, required: true },
+    songID: { type: Number, required: true }
   },
+  emits: ['action'],
 
-  emits: ['request-playlist-current', 'play-song', 'action'],
   setup(props, { emit }) {
+    console.log('PlaylistCurrent setup fired', props)
 
-    // Group songs by album for nested ULs
+    // Group songs by album
     const groupedSongs = computed(() => {
+      console.log('Computing groupedSongs for', props.songs.length, 'songs')
       const groups = []
       let lastAlbum = null
       let currentGroup = null
@@ -52,31 +62,54 @@ export default {
         currentGroup.songs.push(song)
       })
 
+      console.log('GroupedSongs computed:', groups)
       return groups
-    }) // <-- fixed closure here
+    })
 
     const request = () => {
+      console.log('Requesting playlist_current n=', props.playlistCurrentN)
       emit('action', {
         type: 'playlist_current',
         n: props.playlistCurrentN
       })
     }
 
-    onMounted(request)
+    onMounted(() => {
+      console.log('PlaylistCurrent mounted')
+      request()
+    })
 
     watch(
-      () => [props.currentPosition, props.playlistCurrentN],
-      request
+      () => props.currentPosition,
+      (newVal, oldVal) => {
+        console.log('currentPosition changed from', oldVal, 'to', newVal)
+        if (newVal !== oldVal) request()
+      }
     )
 
+    watch(
+      () => props.songs,
+      (newSongs, oldSongs) => {
+        console.log('songs prop changed', oldSongs?.length, '->', newSongs?.length)
+      },
+      { deep: true }
+    )
+
+    watch(
+      () => props.songID,
+      (newID, oldID) => {
+        console.log('songID changed from', oldID, 'to', newID)
+        request()  // ask for new playlist_current JSON
+      }
+    )
+
+
     const playSong = (pos) => {
-      emit('action', {
-        type: 'pl_number',
-        pos
-      })
+      console.log('playSong called with pos', pos)
+      emit('action', { type: 'playPosition', pos })
     }
 
-    return { playSong, groupedSongs }
+    return { playSong, groupedSongs, currentPosition: props.currentPosition, sec2sex }
   }
 }
 </script>
@@ -85,6 +118,7 @@ export default {
 .current a {
   font-weight: bold;
   text-decoration: underline;
+  color: #bea574;
 }
 .bullet-1 {
   list-style-type: disc;

@@ -22,6 +22,7 @@
     <!-- tabs -->
     <div style="display:flex;border-bottom:1px solid #444;">
       <div @click="tab='linger'" :style="tabStyle('linger')">linger</div>
+      <div @click="tab='playlist'" :style="tabStyle('playlist')">playlist</div>
       <div @click="tab='audio'" :style="tabStyle('audio')">audio</div>
     </div>
 
@@ -135,7 +136,18 @@
     </div>
 
 
-
+    <!-- playlist tab -->
+    <div v-if="tab==='playlist'" style="padding:10px;">
+      <div>
+        Playlist<br> Current +/- <em>n:</em><br>
+        <input
+          type="number"
+          min="1"
+          v-model.number="localPlaylistN"
+          style="width:80px"
+        >
+      </div>
+    </div>
 
 
 
@@ -151,9 +163,10 @@ export default {
   name: 'ControlPanel',
   props: {
     visible: Boolean,
-    linger: Object
+    linger: Object,
+    playlistCurrentN: Number
   },
-  emits: ['cmd', 'close'],
+  emits: ['cmd', 'close', 'update:playlistCurrentN'],
   setup(props, { emit }) {
     const tab = ref('linger')
     const x = ref(40)
@@ -168,6 +181,7 @@ export default {
     const xyEnd = ref('')
     const xyEnabled = ref(false)
 
+    const localPlaylistN = ref(Number(props.playlistCurrentN) || 12)
 
     const panelStyle = computed(() => ({
       position:'fixed',
@@ -328,6 +342,28 @@ export default {
       }
     })
 
+//    watch(
+//      () => props.playlistCurrentN,
+//      (val) => {
+//        if (typeof val === 'number') {
+//          localPlaylistN.value = val
+//        }
+//      }
+//    )
+
+    watch(
+      () => props.playlistCurrentN,
+      (val) => {
+        const n = Number(val) || 12
+        localPlaylistN.value = n
+      }
+    )
+
+
+    watch(localPlaylistN, (val) => {
+      emit('update:playlistCurrentN', Number(val) || 12 )
+    })
+
     return {
       tab,
       panelStyle,
@@ -342,8 +378,8 @@ export default {
       emitCmd,
       blocklimit,
       blockEnabled,
-      toggleBlocklimit
-
+      toggleBlocklimit,
+      localPlaylistN
     }
   }
 }
