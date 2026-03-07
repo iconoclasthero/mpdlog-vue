@@ -78,14 +78,14 @@
           
           <button v-if="viewMode !== 'long'" 
                   type="button" 
-                  @click="$emit('change-view', 'long')" 
+                  @click="$emit('action', 'viewLong')" 
                   class="btn btn-secondary" 
                   title="Long log">
             📜
           </button>
           <button v-else 
                   type="button" 
-                  @click="$emit('change-view', 'default')" 
+                  @click="$emit('action', 'viewDefault')" 
                   class="btn btn-danger" 
                   title="Return">
             ↩️
@@ -124,6 +124,13 @@
       </div>
     </div>
   </div>
+  <hr style="background-color:#912715">
+  <div>
+  github:
+  <a href="https://github.com/iconoclasthero/mpdgolinger" rel="noopener noreferrer" target="_blank" class="hidden-link">mpdgolinger</a>
+  &nbsp;—&nbsp;
+  <a href="https://github.com/iconoclasthero/mpdlog-vue" rel="noopener noreferrer" target="_blank" class="hidden-link">mpdlog-vue</a>
+</div>
 </template>
 
 <script>

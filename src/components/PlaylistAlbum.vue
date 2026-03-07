@@ -1,109 +1,54 @@
 <script setup>
-  import { ref, onMounted, computed, watch } from 'vue'
-  import { sec2sex } from '@/utils/time.js'
+import { toRefs, computed, watch } from 'vue'
+import { sec2sex } from '@/utils/time.js'
 
-//  const emit = defineEmits(['playPosition'])
-  const emit = defineEmits(['action'])
+const emit = defineEmits(['action'])
 
-  const props = defineProps({
-    albumkey: { type: String, default: null },
-    currentPosition: { type: Number, default: null }
-  })
+const props = defineProps({
+  songs: { type: Array, required: true },
+  songID: { type: Number, required: true },
+  currentPosition: { type: Number, default: null },
+  showPath: Boolean
+})
 
-  const songs = ref([])
-  const loading = ref(true)
-  const error = ref(null)
+const { songs, songID, currentPosition } = toRefs(props)
 
-  async function fetchAlbum() {
-    loading.value = true
-    error.value = null
+console.log('songID', songID)
 
-    const payload = props.albumkey
-      ? { system: 'mpd', cmd: 'playlist', args: { albumkey: props.albumkey } }
-      : { system: 'mpd', cmd: 'playlist', args: 'album' }
+const playSong = (pos) => {
+  emit('action', { type: 'playPosition', pos })
+}
 
-    try {
-      const ws = new WebSocket('ws://192.168.1.2:8008/ws')
+const request = () => {
+  console.log('Requesting playlist_album'),
+  emit('action', { type: 'playlist_album' })
+}
 
-      ws.onopen = () => {
-        ws.send(JSON.stringify(payload))
-      }
+const currentPos = computed(() => {
+  const cur = songs.value.find(s => s.song_position >= 0 && s.song_position === s.song_position && s.isCurrent)
+  return cur ? cur.song_position : null
+})
 
-      ws.onmessage = (ev) => {
-        const data = JSON.parse(ev.data)
-        songs.value = data.response || []
-        loading.value = false
-        ws.close()
-      }
-
-      ws.onerror = (e) => {
-        error.value = 'WebSocket error'
-        loading.value = false
-      }
-
-    } catch (e) {
-      error.value = e.message
-      loading.value = false
-    }
-  }
-
-//  function playSong(pos) {
-//    const payload = {
-//      system: 'mpd',
-//      cmd: 'play',
-//      args: { song_position: pos }
-//    }
-//
-//    const ws = new WebSocket('ws://192.168.1.2:8008/ws')
-//    ws.onopen = () => ws.send(JSON.stringify(payload))
-//  }
-
-  const playSong = (pos) => {
-    console.log('playSong called with pos', pos)
-    emit('action', { type: 'playPosition', pos })
-  }
-
-
-  watch(
-    () => props.currentPosition,
-    (newVal, oldVal) => {
-      if (newVal !== oldVal) {
-        fetchAlbum()
-      }
-    }
-  )
-
-  const currentPos = computed(() => {
-    const cur = songs.value.find(s => s.song_position >= 0 && s.song_position === s.song_position && s.isCurrent)
-    return cur ? cur.song_position : null
-  })
-
-  onMounted(fetchAlbum)
+// optional: watch for changes just to log updates
+watch(songs, (newVal) => console.log('songs updated', newVal), { deep: true })
+watch(currentPosition, (newVal) => console.log('currentPosition changed', newVal))
+watch(songID, (newVal) => { console.log('SongID changed', newVal), request() })
 </script>
-
 
 <template>
   <div class="playlist-album">
-  <hr style="background-color:#912715">
+    <hr style="background-color:#912715">
 
-    <h3 v-if="songs.length">
+    <h5 class="pl-head" v-if="songs.length">
       Songs in playlist from
-      <em class="album">
-        {{ songs[0].album }}
-      </em>
-    </h3>
-
-    <div v-if="loading">Loading…</div>
-    <div v-if="error">{{ error }}</div>
-
-    <ul v-if="!loading && songs.length">
+      <span class="album">{{ songs[0].album }}</span>:
+    </h5>
+   <div class="short-br"></div>
+    <ul v-if="songs.length">
       <li v-for="song in songs" :key="song.song_position">
-
         <a href="#" @click.prevent="playSong(song.song_position)">
-<!--          <span :class="{ current: song.isCurrent }">  -->
-          <span :class="{ current: song.song_position === currentPosition }">
-
-            <strong>{{ song.artist }}</strong>
+          <span :class="{ artist: song.song_position === currentPosition }">
+            ({{ song.song_position }}) <strong>{{ song.artist }}</strong>
             –
             {{ String(song.disc).padStart(2,'0') }}-{{ String(song.track).padStart(2,'0') }}
             -
@@ -111,16 +56,32 @@
             [{{ sec2sex(song.time) }}]
           </span>
         </a>
-
+            <div v-if="showPath" class="album file-path">
+            <span style="text-decoration: none; display: inline-block;">
+            <a :href="'mpdlog://open?path=' + encodeURIComponent(song.file)">
+              {{ song.file }}
+            </a></span>
+            </div>
       </li>
     </ul>
 
+    <div v-if="!songs.length">No songs available</div>
   </div>
 </template>
 
 <style scoped>
 .current {
-  color: #d4af37;
+  color: #bea574;
   font-weight: bold;
+}
+.playlist-album ul {
+  margin-left: 3em;
+  padding-left: 0;
+}
+.short-br {
+  display: block;
+  height: 1px;
+  margin: 0;
+  padding: 0;
 }
 </style>

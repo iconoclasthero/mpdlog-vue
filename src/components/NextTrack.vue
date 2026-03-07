@@ -36,10 +36,18 @@
       </em></strong>
     </span>
     <br>
-    <span v-if="showPath" class="album file-path">
+<!--    <span v-if="showPath" class="album file-path">
       {{ next.file }}
     </span>
     <br v-if="showPath">
+-->
+    <div v-if="showPath" class="album file-path">
+    <span style="text-decoration: none; display: inline-block;">
+    <a :href="'mpdlog://open?path=' + encodeURIComponent(next.file)">
+      {{ next.file }}
+    </a></span>
+    </div>
+
   </div>
 </template>
 

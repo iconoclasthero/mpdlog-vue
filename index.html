@@ -35,14 +35,14 @@
     body { 
       font-family: Arial, sans-serif; 
       background-color: #1e2122; 
-      color: #333; 
+      color: /* 40%: #81251d; /* 50% */ #561913; /* #40130e; /* #531a1a; /* #400000; /* #333; */
       padding: 20px; 
     }
     
     h1 { color: #444; }
     
     pre { 
-      background-color: 383838;
+      background-color: #383838;
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 5px;
@@ -232,6 +232,19 @@
       color: #eece91;       /*  0% */
       opacity: 0.75;
       word-break: break-all;
+    }
+
+    .short-br {
+      display: block;
+      height: 1px;
+      margin: 0;
+      padding: 0;
+    }
+    .medium-br {
+      display: block;
+      height: 0.5em;
+      margin: 0;
+      padding: 0;
     }
 
 

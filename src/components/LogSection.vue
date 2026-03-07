@@ -66,8 +66,13 @@
         </a>
       </strong>
       <br>
-      <span v-if="showPath || viewMode === 'long'" class="album file-path">
-        {{ entry.file }}
+<!--      <span v-if="showPath || viewMode === 'long' || viewMode === 'log'" class="album file-path"> -->
+      <span v-if="showPath" class="album file-path">
+
+        <span style="text-decoration: none; display: inline-block;">
+        <a :href="'mpdlog://open?path=' + encodeURIComponent(entry.file)">
+          {{ entry.file }}
+        </a></span>
         <br>
       </span>
 
@@ -82,7 +87,7 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { sec2sex } from '@/utils/time.js'
 
 export default {
@@ -92,71 +97,134 @@ export default {
     viewMode: String,
     showPath: Boolean
   },
-  setup(props) {
-    const formatDisc = (disc) => {
-      return String(disc || '0').padStart(2, '0')
-    }
-
-    const formatTrack = (track) => {
-      return String(track || '0').padStart(2, '0')
-    }
-
-//    const formatDuration = (duration) => {
-//      const totalSec = Math.floor(parseFloat(duration || 0))
-//      const m = Math.floor(totalSec / 60)
-//      const s = totalSec % 60
-//      return `${m}:${s < 10 ? '0' : ''}${s}`
+//  setup(props) {
+//   const internalEntries = ref(props.entries || [])
+//
+//  watch(() => props.entries, newVal => {
+//    internalEntries.value = newVal
+//  })
+//
+//  watch(() => props.viewMode, newMode => {
+//    console.log('viewMode changed to', newMode)
+//    // optionally recalc something based on newMode
+//  })
+//
+//    const formatDisc = (disc) => {
+//      return String(disc || '0').padStart(2, '0')
 //    }
+//
+//    const formatTrack = (track) => {
+//      return String(track || '0').padStart(2, '0')
+//    }
+//
+//    const formatDuration = (duration) => sec2sex(duration || 0)
+//
+//    const formatAlbum = (album, year) => {
+//      const cleanAlbum = album?.replace(' (mp3)', '') || ''
+//      const yearPart = year?.split('-')[0] || ''
+//      return `${cleanAlbum} ${yearPart ? `(${yearPart})` : ''}`
+//    }
+//
+//    // --- merged log entries for skipped+ignored ---
+//    const logEntries = computed(() => {
+//      const result = []
+//      const list = props.entries || []
+//
+//      for (let i = 0; i < list.length; i++) {
+//        const cur = list[i]
+//        const next = list[i + 1]
+//
+//        if (
+//          cur?.action === 'skipped' &&
+//          next?.action === 'ignored' &&
+//          cur.file === next.file
+//        ) {
+//          result.push({
+//            ...cur,
+//            action: 'skipped-ignored'
+//          })
+//          i++
+//          continue
+//        }
+//
+//        result.push(cur)
+//      }
+//
+//      return result
+//    })
+//
+//    return {
+//      logEntries,
+//      formatDisc,
+//      formatTrack,
+//      formatDuration,
+//      formatAlbum
+//    }
+//  }
+setup(props) {
+  // --- reactive copies of props ---
+  const internalEntries = ref(props.entries || [])
+  const internalViewMode = ref(props.viewMode || 'short')
 
-    const formatDuration = (duration) => sec2sex(duration || 0)
-//  const formatDuration = sec2sex(parseFloat(duration || 0))
-
-    const formatAlbum = (album, year) => {
-      const cleanAlbum = album?.replace(' (mp3)', '') || ''
-      const yearPart = year?.split('-')[0] || ''
-      return `${cleanAlbum} ${yearPart ? `(${yearPart})` : ''}`
+  // --- watch props.entries ---
+  watch(
+    () => props.entries,
+    newVal => {
+      internalEntries.value = newVal || []
     }
+  )
 
-    // --- merged log entries for skipped+ignored ---
-    const logEntries = computed(() => {
-      const result = []
-      const list = props.entries || []
+  // --- watch props.viewMode ---
+  watch(
+    () => props.viewMode,
+    newMode => {
+      internalViewMode.value = newMode || 'short'
+      console.log('viewMode changed to', internalViewMode.value)
+      // you could recalc derived values here if needed
+    }
+  )
 
-      for (let i = 0; i < list.length; i++) {
-        const cur = list[i]
-        const next = list[i + 1]
+  // --- formatting helpers ---
+  const formatDisc = disc => String(disc || '0').padStart(2, '0')
+  const formatTrack = track => String(track || '0').padStart(2, '0')
+  const formatDuration = duration => sec2sex(duration || 0)
+  const formatAlbum = (album, year) => {
+    const cleanAlbum = album?.replace(' (mp3)', '') || ''
+    const yearPart = year?.split('-')[0] || ''
+    return `${cleanAlbum} ${yearPart ? `(${yearPart})` : ''}`
+  }
 
-        if (
-          cur?.action === 'skipped' &&
-          next?.action === 'ignored' &&
-          cur.file === next.file
-        ) {
-          result.push({
-            ...cur,
-            action: 'skipped-ignored'
-          })
-          i++
-          continue
-        }
+  // --- merged log entries for skipped+ignored ---
+  const logEntries = computed(() => {
+    const list = internalEntries.value || []
+    const result = []
 
-        result.push(cur)
+    for (let i = 0; i < list.length; i++) {
+      const cur = list[i]
+      const next = list[i + 1]
+
+      if (cur?.action === 'skipped' && next?.action === 'ignored' && cur.file === next.file) {
+        result.push({ ...cur, action: 'skipped-ignored' })
+        i++
+        continue
       }
 
-      return result
-    })
-
-
-
-
-
-    return {
-      logEntries,
-      formatDisc,
-      formatTrack,
-      formatDuration,
-      formatAlbum
+      result.push(cur)
     }
+
+    return result
+  })
+
+  return {
+    internalEntries,
+    internalViewMode,
+    logEntries,
+    formatDisc,
+    formatTrack,
+    formatDuration,
+    formatAlbum
   }
+}
 }
 </script>
 
@@ -179,11 +247,17 @@ summary:hover {
   opacity: 0.8;
 }
 
+.skipped {
+  text-decoration: line-through;
+/*  text-decoration-color: #d73e30; */
+  text-decoration-color: #facc15;
+  text-decoration-thickness: 0.1em;
+}
+
 .ignored,
-.skipped,
 .skipped-ignored {
   text-decoration: line-through;
-  text-decoration-color: #d73e30;
+  text-decoration-color: #1e2122; /* #d73e30; */
   text-decoration-thickness: 3px;
 }
 

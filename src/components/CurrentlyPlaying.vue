@@ -10,7 +10,9 @@
       <a class="pauseicon" href="#" @click.prevent="$emit('action', 'toggle_playback')">
         <span :class="altClass">{{ toggleIcon }}</span>
       </a>&nbsp;
-      <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" 
+<!--    <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" -->
+        <a :class="colorClass" href="#" @click.prevent="$emit('action', { type: 'playlist_current', n: null })"
+
          title="Playlist|current song">#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}</a> &nbsp;
       <a class="skipend" href="#" @click.prevent="$emit('action', 'next_track')">▶▮</a>
     </span>
@@ -69,7 +71,8 @@
         <a :href="`https://musicbrainz.org/release/${current.musicbrainz_albumid}`" target="_blank">
           {{ albumDisplay }}&nbsp
         </a>
-        <a href="#" @click.prevent="$emit('action', 'playlist_album')" title="Playlist|album">
+<!--        <a href="#" @click.prevent="$emit('action', 'playlist_album')" title="Playlist|album"> -->
+        <a href="#" @click.prevent="$emit('action', { type: 'playlist_album', n: null })" title="Playlist|album">
           <i class="bi bi-box-arrow-up-right extlink"></i>
         </a>
       </strong>
@@ -77,10 +80,17 @@
     <br>
 
     <!-- Toggle path display -->
-    <span v-if="showPath" class="album file-path">
+<!--    <span v-if="showPath" class="album file-path">
       {{ current.file }}
       <br>
-    </span>
+    </span> -->
+            <div v-if="showPath" class="album file-path">
+            <span style="text-decoration: none; display: inline-block;">
+            <a :href="'mpdlog://open?path=' + encodeURIComponent(current.file)">
+              {{ current.file }}
+            </a></span>
+            </div>
+
 
     <!-- Status line - Desktop -->
     <span class="album desktop" style="font-style:normal">

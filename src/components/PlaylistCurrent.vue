@@ -7,22 +7,27 @@
       <li v-for="(albumGroup, aIndex) in groupedSongs" :key="aIndex" style="color:#cbc4b7">
         <strong class="bullet-1">{{ albumGroup.albumartist }} -- {{ albumGroup.album }}</strong>
         <ul>
-<!--
-          <li
-            v-for="song in albumGroup.songs"
-            :key="song.song_position"
-            :class="{ current: song.song_position === currentPosition }"
-          >
-          -->
-          <li
-            v-for="song in albumGroup.songs"
-            :key="song.songID"
-            :class="{ current: song.songID === songID }"
-          >
-               <a href="#" @click.prevent="playSong(song.song_position)" :title="'Play ' + song.song_position">
-              <strong>{{ song.artist }}</strong> – {{ song.disc }}-{{ song.track }} - {{ song.title }} [{{ sec2sex(song.time) }}]
+          <li v-for="song in albumGroup.songs" :key="song.songID" :class="{ 'artist current': song.songID === songID }">
+            <a href="#" @click.prevent="playSong(song.song_position)" :title="'Play ' + song.song_position">
+              <strong>({{ String(song.song_position).padStart(
+                          Math.max(...songs.map(s => String(s.song_position).length)), '0' ) }}) {{ song.artist }}
+              </strong> – {{ String(song.disc).padStart(2,'0') }}-
+                {{ String(song.track).padStart(2,'0') }} - {{ song.title }} [{{ sec2sex(song.time) }}]
             </a>
+<!--
+            <div v-if="showPath" class="album file-path">
+            <span style="text-decoration: none; display: inline-block;">{{ song.file }}</span>
+            </div>
+-->
+            <div v-if="showPath" class="album file-path">
+            <span style="text-decoration: none; display: inline-block;">
+            <a :href="'mpdlog://open?path=' + encodeURIComponent(song.file)">
+              {{ song.file }}
+            </a></span>
+            </div>
+
           </li>
+        <div v-if="showPath" class="medium-br"><br></div>
         </ul>
       </li>
     </ul>
@@ -38,8 +43,9 @@ export default {
   props: {
     songs: { type: Array, required: true },
     currentPosition: Number,
+    songID: { type: Number, required: true },
     playlistCurrentN: { type: Number, required: true },
-    songID: { type: Number, required: true }
+    showPath: Boolean
   },
   emits: ['action'],
 
@@ -115,10 +121,9 @@ export default {
 </script>
 
 <style scoped>
-.current a {
+.artist.current {
   font-weight: bold;
   text-decoration: underline;
-  color: #bea574;
 }
 .bullet-1 {
   list-style-type: disc;
@@ -126,5 +131,13 @@ export default {
 .playlist-album ul {
   margin-left: 1em;
   padding-left: 0;
+}
+.album.file-path {
+  text-decoration: unset !important;
+  font-weight: normal;
+  font-size: 0.9em;
+  line-height: 1.0em;
+  margin: 0;
+  padding: 0;
 }
 </style>

@@ -82,7 +82,7 @@
 
     <!-- Log Section -->
     <LogSection 
-      v-if="logEntries.length > 0 && (viewMode === 'default' || viewMode === 'log')"
+      v-if="logEntries.length > 0 && (viewMode === 'default' || viewMode === 'log' || viewMode === 'long' )"
       :entries="logEntries"
       :view-mode="viewMode"
       :showPath="showPath"
@@ -90,7 +90,10 @@
 
     <PlaylistAlbum
       v-if="viewMode === 'album'"
-      :current-position="current?.song_position"
+      :songs="playlistAlbumSongs"
+      :currentPosition="current?.song_position"
+      :songID="current?.songID"
+      :showPath="showPath"
       @action="handleAction"
     />
 
@@ -101,7 +104,7 @@
       :currentPosition="current?.song_position"
       :playlistCurrentN="playlistCurrentN"
       :songID="current?.songID"
-      :radius="3"
+      :showPath="showPath"
       @action="handleAction"
     />
 
@@ -201,6 +204,10 @@ export default {
     const logBuffer = []
     const playlistCurrentN = ref(12)   // the +/- around current playlist so that number of songs is (2*n)+1, e.g., grep -C<n>
     const playlistCurrentSongs = ref([])
+    const playlistAlbumSongs = ref([])
+    const logLinesDefault = 24
+//    const logLines = ref(24)
+    const logLines = ref(logLinesDefault)
 
     let logFlushTimer = null
 
@@ -280,8 +287,20 @@ export default {
     }
 
     const requestLog = () => {
+      console.log("requestLog invoked, viewMode=", viewMode.value)
       if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-        logAndSend('json-log')
+        if (viewMode.value === "default") {
+          logLines.value = logLinesDefault
+          console.log("requestLog requesting default log")
+          logAndSend(JSON.stringify({ system: 'mpd', cmd: 'json-log' }))
+        }
+        else if (viewMode.value === "long" || ( viewMode.value === "log" && loglines.value != "" )) {
+          if (viewMode.value === "long") { 
+            logLines.value = 100
+          } 
+          console.log("logAndSend JSON, logLines=", logLines.value)
+          logAndSend(JSON.stringify({ system: 'mpd', cmd: 'json-log-stream', args: logLines.value }))
+        }
       }
     }
 
@@ -325,6 +344,14 @@ export default {
         return
       }
 
+      if (data.cmd === 'json-log' && Array.isArray(data.response)) {
+        logEntries.value = data.response.slice(0, logLines.value)  // first N entries
+        console.log('logEntries updated from json-log response, count=', logEntries.value.length)
+        return
+      }
+
+
+
       if (data.status || data.song) {
         status.value = data.status || status.value
         current.value = data.song || current.value
@@ -333,22 +360,29 @@ export default {
 
       if (data.system && data.cmd && data.response !== undefined) {
         if (data.system === 'player' && data.cmd === 'playlist') {
-          if (Array.isArray(data.response)) {
-            playlistCurrentSongs.value = data.response
-          } else {
+          console.log('playlist response received for viewMode:', viewMode.value, data.response)
+        }
+        if (data.system === 'player' && data.cmd === 'playlist') {
+          if (!Array.isArray(data.response)) {
             console.error('Invalid playlist response:', data.response)
-            playlistCurrentSongs.value = []
+            if (viewMode.value === 'current') {
+              playlistCurrentSongs.value = []
+            } else if (viewMode.value === 'album') {
+              playlistAlbumSongs.value = []
+            }
+            return
           }
-//          playlistCurrentSongs.value = data.response || []
+          if (viewMode.value === 'current') {
+            playlistCurrentSongs.value = data.response
+          }
+          if (viewMode.value === 'album') {
+            playlistAlbumSongs.value = data.response
+            console.log('App set playlistAlbumSongs:', playlistAlbumSongs.value.length)
+          }
           return
         }
-
-        if (data.system === 'player' && data.cmd === 'togglestate' && status.value) {
-          status.value.player.state = data.response
-          return // this was added; should it be there??
-        }
-        return
       }
+
 
       if (data.player && data.current) {
         const last = lastFile.value
@@ -401,21 +435,29 @@ export default {
 //        if (logEntries.value.length > 24) logEntries.value = logEntries.value.slice(-24)
 //      }
 
-  if (data.timestamps && data.action) {
-    // Add to buffer instead of pushing immediately
-    logBuffer.push(data)
 
-    if (!logFlushTimer) {
-      logFlushTimer = setTimeout(() => {
-        logEntries.value.push(...logBuffer)
-        if (logEntries.value.length > 24) {
-          logEntries.value = logEntries.value.slice(-24)
+      // inside handleWebSocketMessage, after parsing `data`
+      if (Array.isArray(data) && data.length > 0 && data[0].timestamps && data[0].action) {
+        // treat it like a batch of log entries
+        logEntries.value = data.slice(0, logLines.value)  // keep the first N entries
+        return
+      }
+
+      if (data.timestamps && data.action) {
+        // Add to buffer instead of pushing immediately
+        logBuffer.push(data)
+
+        if (!logFlushTimer) {
+          logFlushTimer = setTimeout(() => {
+            logEntries.value.push(...logBuffer)
+            if (logEntries.value.length > logLines.value) {
+              logEntries.value = logEntries.value.slice(0, logLines.value)
+            }
+            logBuffer.length = 0
+            logFlushTimer = null
+          }, 50) // 50ms is small enough to be imperceptible
         }
-        logBuffer.length = 0
-        logFlushTimer = null
-      }, 50) // 50ms is small enough to be imperceptible
-    }
-  }
+      }
     }
 
     // -------------------------------
@@ -438,8 +480,30 @@ export default {
     // Action handler @ App.vue
     // -------------------------------
     const handleAction = (action) => {
+
+      if (action == 'viewDefault') {
+        console.log('Action viewDefault received')
+        viewMode.value = 'default'
+        logLines.value = logLinesDefault
+        requestLog()
+        return
+      }
+
+      if (action == 'viewLong') {
+        console.log('Action viewLong received')
+        viewMode.value = 'long'
+        requestLog()
+        return
+      }
+
       if (action === 'playlist_album') {
+        console.log('Action playlist_album received')
         viewMode.value = 'album'
+        sendCommand(JSON.stringify({
+          system: 'player',
+          cmd: 'playlist',
+          args: 'album'
+        }))
         return
       }
 
@@ -454,13 +518,24 @@ export default {
       }
 
       if (typeof action === 'object') {
+        if (action.type === 'playlist_album') {
+          console.log('Action Object: playlist_album received')
+          viewMode.value = 'album'
+          sendCommand(JSON.stringify({
+            system: 'player',
+            cmd: 'playlist',
+            args: 'album'
+          }))
+          return
+        }
+
         if (action.type === 'playlist_current') {
+          viewMode.value = 'current'
           sendCommand(JSON.stringify({
             system: 'player',
             cmd: 'playlist',
             args: { current: action.n ?? playlistCurrentN.value }
           }))
-          viewMode.value = 'current'
           return
         }
 
@@ -473,7 +548,7 @@ export default {
           return
         }
       }
-      
+
       const map = {
         toggle_playback: JSON.stringify({ system: 'player', cmd: 'togglestate' }),
         next_track: JSON.stringify({ system:'mpd', cmd:'next' }),
@@ -650,7 +725,7 @@ onUnmounted(() => {
       status, current, next, linger, logEntries, viewMode, albumArtData, 
       handleAction, changeView, sendWebSocketCommand, blockLimitPrompt, 
       showBackTop: true, goTop, showPanel, showPath, ringColor, seekTo,
-      playlistCurrentN, playlistCurrentSongs, setPlaylistCurrentN
+      playlistCurrentN, playlistCurrentSongs, playlistAlbumSongs, setPlaylistCurrentN
     }
   }
 }
