@@ -19,8 +19,9 @@
       :playing="status.player.state==='play'"
       img-src="/android-icon-96x96.png"
       @seek="seekTo"
-      @refresh-status="handleAction('json_status')"
+      @action="handleAction"
   />
+<!--      @refresh-status="handleAction('json_status')" -->
 
      <!-- Icecast link overlay -->
      <a
@@ -108,6 +109,15 @@
       @action="handleAction"
     />
 
+    <SearchView
+    v-if="viewMode === 'search'"
+      :showPath="showPath"     />
+
+<!--    :results="searchResults"
+    @ws-send="sendWS"
+    @selection-change="handleSelection"
+-->
+
     <!-- Navigation Buttons -->
     <NavButtons
       :view-mode="viewMode"
@@ -167,7 +177,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, provide } from 'vue'
 import CurrentlyPlaying from './components/CurrentlyPlaying.vue'
 import AlbumArt from './components/AlbumArt.vue'
 import NextTrack from './components/NextTrack.vue'
@@ -178,12 +188,15 @@ import BackToTop from './components/BackToTop.vue'
 import ProgressCircle from './components/ProgressCircle.vue'
 import PlaylistAlbum from './components/PlaylistAlbum.vue'
 import PlaylistCurrent from './components/PlaylistCurrent.vue'
+import SearchView from './components/SearchView.vue'
 
 export default {
   name: 'App',
-  components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, PlaylistAlbum, PlaylistCurrent, NavButtons, BackToTop, ControlPanel },
+  components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, PlaylistAlbum, PlaylistCurrent, NavButtons, BackToTop, ControlPanel, SearchView },
   setup() {
+    const WS_DEBUG = true
     const ws = ref(null)
+    const isConnected = ref(false)
     const status = ref(null)
     const current = ref(null)
     const next = ref(null)
@@ -191,7 +204,6 @@ export default {
     const logEntries = ref([])
     const viewMode = ref('default')
     const reconnectTimer = ref(null)
-    const isConnected = ref(false)
     const albumArtData = ref(null)
     const lastAlbumKey = ref(null)
     const lastFile = ref(null)
@@ -214,11 +226,54 @@ export default {
     // NEW FLAG TO PREVENT INITIAL LOG REQUEST
     let initialLoadDone = false
 
+    provide('isConnected', isConnected)
+
+    // -------------------------------
+    // Command Bus for components
+    // -------------------------------
+/*    const cmdBus = {
+      send(msg) {
+        ws.value.send(JSON.stringify(msg))
+      }
+    }
+*/
+    const cmdBus = {
+      send(msg){
+        if(!ws.value) return
+        if(ws.value.readyState !== WebSocket.OPEN){
+          console.log('ws not ready, dropping message')
+          return
+        }
+        ws.value.send(JSON.stringify(msg))
+      }
+    }
+
+    const resultBus = {
+      listeners: {},
+      on(type, fn) {
+        if (!this.listeners[type]) this.listeners[type] = []
+        this.listeners[type].push(fn)
+
+        return () => {
+          this.listeners[type] = this.listeners[type].filter(f => f !== fn)
+        }
+      },
+      emit(type, data) {
+        this.listeners[type]?.forEach(f => f(data))
+      }
+    }
+
+    provide('cmdBus', cmdBus)
+    provide('resultBus', resultBus)
+
     // -------------------------------
     // Helper to log and send messages
     // -------------------------------
     const logAndSend = (msg) => {
       console.log('→ Sending WebSocket:', msg)
+      if (WS_DEBUG && msg !== 'json-status' )
+      console.log('[WS →]', typeof msg === 'string' ? JSON.parse(msg) : msg)
+
       if (ws.value?.readyState === WebSocket.OPEN) {
         ws.value.send(msg)
       } else {
@@ -258,6 +313,13 @@ export default {
           let textData = typeof ev.data === 'string' ? ev.data : new TextDecoder().decode(ev.data)
           try {
             const msg = JSON.parse(textData)
+            if (WS_DEBUG)
+              console.log('[WS ←]', msg)
+            if (msg.system === 'search') {
+              resultBus.emit('search', msg)
+              return
+            }
+
             if (msg.system === 'websocket' && msg.cmd === 'subscribe' && msg.response === 'subscribed') {
               console.log('Subscription confirmed by server')
             } else {
@@ -271,11 +333,14 @@ export default {
 
       ws.value.onerror = (err) => console.error('WebSocket error:', err)
       ws.value.onclose = () => {
-        console.log('WebSocket disconnected')
+        console.log('[WS CLOSED]', { code: event.code, reason: event.reason, wasClean: event.wasClean })
+      //  console.log('WebSocket disconnected')
         isConnected.value = false
         reconnectTimer.value = setTimeout(connectWebSocket, 3000)
       }
     }
+
+
 
     // -------------------------------
     // Status / log / playlist helpers
@@ -359,6 +424,12 @@ export default {
       }
 
       if (data.system && data.cmd && data.response !== undefined) {
+        if(data.system === "mpd" && data.cmd === "delete" && 
+          data.response === "ok" && data.deleted > 0 && 
+          viewMode.value === 'search'
+        ){
+          resultBus.emit("playlistChanged")
+        }
         if (data.system === 'player' && data.cmd === 'playlist') {
           console.log('playlist response received for viewMode:', viewMode.value, data.response)
         }
@@ -669,6 +740,13 @@ export default {
       if (ev.altKey && key === 'c') {
         ev.preventDefault()
         showPanel.value = !showPanel.value
+      }
+
+      // Alt+S → toggle Search
+      if (ev.altKey && key === 's') {
+        ev.preventDefault()
+        if (viewMode.value !== 'search') { viewMode.value = 'search' }
+        else { viewMode.value = 'default' }
       }
 
       if (ev.altKey && ev.key.toLowerCase() === 'p') {

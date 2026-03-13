@@ -11,8 +11,8 @@
             <a href="#" @click.prevent="playSong(song.song_position)" :title="'Play ' + song.song_position">
               <strong>({{ String(song.song_position).padStart(
                           Math.max(...songs.map(s => String(s.song_position).length)), '0' ) }}) {{ song.artist }}
-              </strong> – {{ String(song.disc).padStart(2,'0') }}-
-                {{ String(song.track).padStart(2,'0') }} - {{ song.title }} [{{ sec2sex(song.time) }}]
+              </strong> – {{ String(song.disc).padStart(2,'0') }}-{{ String(song.track).padStart(2,'0') }}
+                        - {{ song.title }} [{{ sec2sex(song.time) }}]
             </a>
 <!--
             <div v-if="showPath" class="album file-path">

@@ -128,7 +128,8 @@ watch(
         localElapsed.value += 1
         if (localElapsed.value > props.duration * 1.1) {
           console.log("elapsed exceeded duration * 1.1 → refresh json-status")
-          emit('refresh-status')
+//          emit('refresh-status')
+          emit('action', json-status)
         }
       }, 1000)
     }
