@@ -114,9 +114,10 @@ Album=Infidels'
               :checked="selected.has(track.file)"
               @change="toggle(track.file)"
             />
-
             <span v-if="mode === 'playlist'" class="trackno">
-              ({{ track.song_position }})
+              ({{ String(track.song_position).padStart(posWidth, '0') }})
+
+<!--              ({{ track.song_position }}) -->
             </span>
 
             <span class="trackno">
@@ -129,6 +130,7 @@ Album=Infidels'
 -->
             <span class="title" @click="play(track.song_position)">
               {{ track.title }}
+              <span v-if="isVA(track)"> – {{ track.artist }}</span>
             </span>
 
           </div>
@@ -238,7 +240,7 @@ const query = ref('')
 const results = ref([])
 const selected = ref(new Set())
 const collapsed = ref(new Set())
-
+const posWidth = ref(1) // position width (max number of digits)
 
 /* search controls */
 const mode = ref('playlist')
@@ -306,6 +308,7 @@ function runSearch(){
   const groups = parseQuery(q)
 
   groups.forEach(g => {
+    console.log("SEARCH CONDS", JSON.stringify(g,null,2))
     cmdBus.send({
       system:'search',
       cmd:cmd(),
@@ -378,6 +381,13 @@ function mergeResults(r){
     }
 
   })
+
+  /* compute playlist position width once */
+  if(mode.value === 'playlist'){
+    posWidth.value = Math.max(
+      ...results.value.map(x => String(x.song_position).length)
+    )
+  }
 }
 
 
@@ -438,6 +448,12 @@ const grouped = computed(()=>{
   return arr
 })
 
+/* various artists helper */
+const vaMbId = '89ad4ac3-39f7-470e-963a-56509c546377'
+function isVA(track){
+  return track.albumartist === 'Various Artists'
+      || track.musicbrainz_albumartistid === vaMbId
+}
 
 /* selection */
 function toggle(file){
@@ -456,14 +472,47 @@ function selectedTracks(){
 
 
 /* ADD */
-function addSelected(){
-  const files = selectedTracks().map(t => t.file)
-  if(!files.length) return
-  cmdBus.send({
-    system:"mpd",
-    cmd:"add",
-    args:files
-  })
+//function addSelected(){
+//  const files = selectedTracks().map(t => t.file)
+//  if(!files.length) return
+//  cmdBus.send({
+//    system:"mpd",
+//    cmd:"add",
+//    args:files
+//  })
+//}
+
+function batchAddTracks(tracks, batchBytes = 512*1024) {
+  const batches = []
+  let batch = []
+  let size = 0
+
+  for (const t of tracks) {
+    const tStr = JSON.stringify(t) // estimate size in payload
+    if (size + tStr.length > batchBytes && batch.length) {
+      batches.push(batch)
+      batch = []
+      size = 0
+    }
+    batch.push(t)
+    size += tStr.length
+  }
+  if (batch.length) batches.push(batch)
+  return batches
+}
+
+function addSelected() {
+  const tracks = selectedTracks().map(t => t.file)
+  const batches = batchAddTracks(tracks)
+
+  for (const batch of batches) {
+    cmdBus.send({
+      system: "mpd",
+      cmd: "add",
+      args: batch
+    })
+    console.log(`[addSelected] sent batch ${batch.length} tracks`)
+  }
 }
 
 

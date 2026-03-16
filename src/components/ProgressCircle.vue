@@ -34,7 +34,7 @@ const props = defineProps({
   playing: { type: Boolean, default: true }
 })
 
-const emit = defineEmits(['seek'])
+const emit = defineEmits(['seek', 'action'])
 
 const radius = 52
 const localElapsed = ref(props.elapsed)
@@ -129,7 +129,7 @@ watch(
         if (localElapsed.value > props.duration * 1.1) {
           console.log("elapsed exceeded duration * 1.1 → refresh json-status")
 //          emit('refresh-status')
-          emit('action', json-status)
+          emit('action', 'json-status')
         }
       }, 1000)
     }
