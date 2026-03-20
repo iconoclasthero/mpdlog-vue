@@ -472,49 +472,102 @@ function selectedTracks(){
 
 
 /* ADD */
-//function addSelected(){
-//  const files = selectedTracks().map(t => t.file)
-//  if(!files.length) return
-//  cmdBus.send({
-//    system:"mpd",
-//    cmd:"add",
-//    args:files
-//  })
+////function addSelected(){
+////  const files = selectedTracks().map(t => t.file)
+////  if(!files.length) return
+////  cmdBus.send({
+////    system:"mpd",
+////    cmd:"add",
+////    args:files
+////  })
+////}
+//
+//function batchAddTracks(tracks, batchBytes = 512*1024) {
+//  const batches = []
+//  let batch = []
+//  let size = 0
+//
+//  for (const t of tracks) {
+//    const tStr = JSON.stringify(t) // estimate size in payload
+//    if (size + tStr.length > batchBytes && batch.length) {
+//      batches.push(batch)
+//      batch = []
+//      size = 0
+//    }
+//    batch.push(t)
+//    size += tStr.length
+//  }
+//  if (batch.length) batches.push(batch)
+//  return batches
+//}
+//
+//function addSelected() {
+//  const tracks = selectedTracks().map(t => t.file)
+//  const batches = batchAddTracks(tracks)
+//
+//  for (const batch of batches) {
+//    cmdBus.send({
+//      system: "mpd",
+//      cmd: "add",
+//      args: batch
+//    })
+//    console.log(`[addSelected] sent batch ${batch.length} tracks`)
+//  }
 //}
 
-function batchAddTracks(tracks, batchBytes = 512*1024) {
-  const batches = []
-  let batch = []
-  let size = 0
+function batchAddTracks(tracks, max = 512*1024) {
+  const out = []
+  let start = 0
+  let size = 32    // rough base JSON overhead
 
-  for (const t of tracks) {
-    const tStr = JSON.stringify(t) // estimate size in payload
-    if (size + tStr.length > batchBytes && batch.length) {
-      batches.push(batch)
-      batch = []
-      size = 0
+  for (let i = 0; i < tracks.length; i++) {
+    const t = tracks[i]
+    size += t.length + 3    // quotes + comma estimate
+
+    if (size >= max) {
+      out.push(tracks.slice(start, i))
+      start = i
+      size = t.length + 32
     }
-    batch.push(t)
-    size += tStr.length
   }
-  if (batch.length) batches.push(batch)
-  return batches
+
+  if (start < tracks.length) {
+    out.push(tracks.slice(start))
+  }
+
+  return out
 }
 
+
+//function batchAddTracks(tracks, n = 2) {
+//  const out = []
+//  for (let i = 0; i < tracks.length; i += n) {
+//    out.push(tracks.slice(i, i + n))
+//  }
+//  return out
+//}
+
 function addSelected() {
-  const tracks = selectedTracks().map(t => t.file)
+  const tracks = selectedTracks().map(t => ({
+    uri: t.file,
+    pos: -1
+  }))
+
+  if (!tracks.length) return
+
   const batches = batchAddTracks(tracks)
 
   for (const batch of batches) {
-    cmdBus.send({
+    const payload = {
       system: "mpd",
       cmd: "add",
       args: batch
-    })
-    console.log(`[addSelected] sent batch ${batch.length} tracks`)
+    }
+
+    console.log(JSON.stringify(payload))
+    cmdBus.send(payload)
   }
 }
-
 
 /* DELETE */
 /*

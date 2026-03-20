@@ -194,7 +194,7 @@ export default {
   name: 'App',
   components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, PlaylistAlbum, PlaylistCurrent, NavButtons, BackToTop, ControlPanel, SearchView },
   setup() {
-    const WS_DEBUG = false
+    const WS_DEBUG = true
     const ws = ref(null)
     const isConnected = ref(false)
     const status = ref(null)
@@ -452,6 +452,10 @@ export default {
           }
           return
         }
+          if (data.system === 'playlist' && data.cmd === 'changed') {
+            resultBus.emit('playlistChanged', data.response)
+            return
+          }
       }
 
 
