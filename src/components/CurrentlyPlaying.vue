@@ -25,7 +25,7 @@
         <span class="notes"> ♫ ♪ </span>&nbsp;
       </strong>
       <a class="pauseicon" href="#" @click.prevent="$emit('action', 'toggle_playback')">
-        <span class="altClass">&nbsp;{{ toggleIcon }}</span>
+        <span :class="altClass">&nbsp;{{ toggleIcon }}</span>
       </a> &nbsp;&nbsp;&nbsp;
       <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" 
          title="Playlist|current song">#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}</a>
@@ -108,6 +108,14 @@
       <a href="#" @click.prevent="$emit('action', 'toggle_consume')">consume:</a> 
       <span class="smallemoji desktop">{{ consumeIcon }} &nbsp;</span> 
 
+<a
+  v-if="pauseRemaining > 0"
+  href="#"
+  @click.prevent="$emit('toggleControlPanel', 'timer')"
+>
+  timer: {{ pauseDisplay }}&nbsp;
+</a>
+
       <!-- Linger desktop -->
       <span>
         <a href="#" @click.prevent="$emit('action', 'linger_next')">
@@ -165,82 +173,144 @@
   </div>
 </template>
 
-<script>
-import { ref, computed, watch, onUnmounted } from 'vue'
+<script setup>
+import { ref, computed, watch, onUnmounted, inject } from 'vue'
 import { sec2sex } from '@/utils/time.js'
 
-export default {
-  name: 'CurrentlyPlaying',
-  props: { status: Object,
-           current: Object, 
-           next: Object,
-           linger: Object,
-           showPath: Boolean
+const props = defineProps({
+  status: Object,
+  current: Object,
+  next: Object,
+  linger: Object,
+  showPath: Boolean,
+  pauseTimer: Object,
+  pauseRemaining: Number,
+  pauseDisplay: String,
+})
+
+const emit = defineEmits(['action', 'toggleControlPanel'])
+
+const elapsed = ref(0)
+const timerInterval = ref(null)
+
+const stateText = computed(() =>
+  props.status?.player?.state === 'play' ? 'playing' : 'paused'
+)
+
+const colorClass = computed(() =>
+  props.status?.player?.state === 'play' ? 'playing' : 'artist'
+)
+
+const altClass = computed(() =>
+  props.status?.player?.state === 'play' ? 'artist' : 'playing'
+)
+
+const toggleIcon = computed(() =>
+  props.status?.player?.state === 'play' ? '▮▮' : '▶'
+)
+
+const disc = computed(() =>
+  String(props.current?.disc || '0').padStart(2, '0')
+)
+
+const track = computed(() =>
+  String(props.current?.track || '0').padStart(2, '0')
+)
+
+const albumDisplay = computed(() => {
+  const album = props.current?.album || ''
+  const year = props.current?.year?.split('-')[0] || ''
+  return `${album.replace(' (mp3)', '')} ${year ? `(${year})` : ''}`
+})
+
+// keep injection (even if not used yet)
+const layout = inject('layout')
+
+const repeatIcon = computed(() => '⟳ ')
+const singleIcon = computed(() =>
+  props.status?.player?.single ? '✅' : ''
+)
+
+const randomIcon = computed(() =>
+  props.status?.player?.random ? ' ✅' : ' ❌'
+)
+
+const consumeIcon = computed(() =>
+  props.status?.player?.consume ? ' ✅' : ' ❌'
+)
+
+const lingerXY = computed(() => '')
+
+const elapsedDisplay = computed(() =>
+  sec2sex(elapsed.value || 0)
+)
+
+const totalDisplay = computed(() =>
+  sec2sex(props.status?.player?.duration || 0)
+)
+
+const percentDisplay = computed(() =>
+  Math.floor(
+    (elapsed.value / (props.status?.player?.duration || 1)) * 100
+  )
+)
+
+const percentValue = computed(() => percentDisplay.value)
+
+const lingerStat = computed(() => {
+  const l = props.linger
+  if (!l) return ''
+  if (l.lingerxy) return `${l.lingerx}⚡${l.lingery}`
+  const limit =
+    l.limit !== l.baselimit ? `${l.limit}(${l.baselimit})` : l.limit
+  return `${l.count}/${limit}`
+})
+
+watch(
+  () => props.status?.player?.elapsed,
+  (v) => {
+    if (v !== undefined) elapsed.value = v
   },
-  emits: ['action'],
-  setup(props, { emit }) {
-    const elapsed = ref(0)
-    const timerInterval = ref(null)
+  { immediate: true }
+)
 
-    const stateText = computed(() => props.status?.player?.state === 'play' ? 'playing' : 'paused')
-    const colorClass = computed(() => props.status?.player?.state === 'play' ? 'playing' : 'artist')
-    const altClass = computed(() => props.status?.player?.state === 'play' ? 'artist' : 'playing')
-    const toggleIcon = computed(() => props.status?.player?.state === 'play' ? '▮▮' : '▶')
-    const disc = computed(() => String(props.current?.disc || '0').padStart(2,'0'))
-    const track = computed(() => String(props.current?.track || '0').padStart(2,'0'))
-    const albumDisplay = computed(() => {
-      const album = props.current?.album || ''
-      const year = props.current?.year?.split('-')[0] || ''
-      return `${album.replace(' (mp3)','')} ${year ? `(${year})` : ''}`
-    })
-    const repeatIcon = computed(() => '⟳ ')  // probably not being used; this "icon" is always on, it's jsut a matter of turning green on in the template.
-    const singleIcon = computed(() => props.status?.player?.single ? '✅' : '')
-    const randomIcon = computed(() => props.status?.player?.random ? ' ✅' : ' ❌')
-    const consumeIcon = computed(() => props.status?.player?.consume ? ' ✅' : ' ❌')
-    const lingerXY = computed(() => '')   // probably not being used and almost assuredly meaningless since it always resolves to ''
+watch(
+  () => props.status?.player?.state,
+  (state) => {
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
 
-//    const sec2mmss = (s) => {
-//      const total = Math.floor(s)
-//      const h = Math.floor(total / 3600)
-//      const m = Math.floor((total % 3600) / 60)
-//      const sec = total % 60
-//      return h > 0 ? `${h}:${m<10?'0':''}${m}:${sec<10?'0':''}${sec}` : `${m}:${sec<10?'0':''}${sec}`
-//    }
+    if (state === 'play') {
+      timerInterval.value = setInterval(() => {
+        const dur = props.status?.player?.duration || 0
+        if (elapsed.value < dur) elapsed.value++
+      }, 1000)
+    }
+  },
+  { immediate: true }
+)
 
-//    const elapsedDisplay = computed(() => sec2mmss(elapsed.value))
-//    const totalDisplay = computed(() => sec2mmss(props.status?.player?.duration || 0))
-    const elapsedDisplay = computed (() => sec2sex(elapsed.value || 0))
-    const totalDisplay = computed(() => sec2sex(props.status?.player?.duration || 0))
-    const percentDisplay = computed(() => Math.floor((elapsed.value/(props.status?.player?.duration||1))*100))
-    const percentValue = computed(() => percentDisplay.value)
+watch(() => props.pauseTimer, (v) => {
+  console.log('pauseTimer', v)
+})
 
-    const lingerStat = computed(() => {
-      const l = props.linger
-      if (!l) return ''
-      if (l.lingerxy) return `${l.lingerx}⚡${l.lingery}`
-      const limit = l.limit !== l.baselimit ? `${l.limit}(${l.baselimit})` : l.limit
-      return `${l.count}/${limit}`
-    })
-
-    watch(() => props.status?.player?.elapsed, (v) => { if(v!==undefined) elapsed.value=v }, { immediate:true })
-    watch(() => props.status?.player?.state, (state) => {
-      if(timerInterval.value) { clearInterval(timerInterval.value); timerInterval.value=null }
-      if(state==='play') {
-        timerInterval.value = setInterval(() => {
-          const dur = props.status?.player?.duration||0
-          if(elapsed.value<dur) elapsed.value++
-        },1000)
-      }
-    }, { immediate:true })
-
-    onUnmounted(() => { if(timerInterval.value) clearInterval(timerInterval.value) })
-
-    return { stateText,colorClass,altClass,toggleIcon,disc,track,albumDisplay,
-             singleIcon,randomIcon,consumeIcon,elapsedDisplay,totalDisplay,
-             percentDisplay,percentValue,lingerXY, lingerStat, repeatIcon
-           }
+watch(
+  () => [elapsed.value, props.status?.player?.duration],
+  ([e, d]) => {
+    if (!d) return
+    if (e > d * 1.05 ) { 
+      console.log('CurrentlyPlaying: elapsed > duration * 1.05'),
+      emit('action', 'json-status')
+    }
   }
-}
+)
+
+
+onUnmounted(() => {
+  if (timerInterval.value) clearInterval(timerInterval.value)
+})
 </script>
 
 <style scoped>
