@@ -13,7 +13,7 @@
   <div style="position:relative; cursor:pointer;">
     <ProgressCircle
       v-if="status"
-      :elapsed="status.player.elapsed"
+      :elapsed="Number(status.player.elapsed) || 0"
       :duration="status.player.duration"
       :color="ringColor"
       :playing="status.player.state==='play'"
@@ -21,6 +21,7 @@
       @seek="seekTo"
       @action="handleAction"
   />
+<!--       :elapsed="status.player.elapsed" -->
 <!--      @refresh-status="handleAction('json_status')" -->
 
      <!-- Icecast link overlay -->
@@ -39,6 +40,43 @@
 </div>
 <br>
 
+<!-- Desktop
+      background-color: #0dcaf0;
+      background-color: #007bff;
+      background: #222;
+
+
+-->
+
+
+<button
+  class="menu-btn desktop"
+  @click="showPanel = !showPanel"
+  :style="{
+    position: 'fixed',
+    top: '12px',
+    left: menuLeft + 'px',
+    background: '#d94031',
+    background: '#383838',
+    background: '#1e2122',
+    color: '#fff',
+    color: '#383838',
+    outline: 'none',
+    border: 'none',
+    cursor: 'pointer',
+ }"
+>
+  ☰
+</button>
+
+
+<!-- Mobile -->
+<button
+  class="menu-btn mobile"
+  @click="showPanel = !showPanel"
+>
+  ☰
+</button>
 
     <!-- Progress Circle -->
 <!--
@@ -54,19 +92,23 @@
     />
 -->
     <!-- Currently Playing Section -->
-    <CurrentlyPlaying 
+    <CurrentlyPlaying
       v-if="status"
       :status="status"
       :current="current"
       :next="next"
       :linger="linger"
+      :pauseTimer="pauseTimer"
+      :pauseTimerRem="pauseTimerRem"
+      :pauseTimerDisp="sec2sex(pauseTimerRem)"
       :send-command="sendWebSocketCommand"
       :showPath="showPath"
+      @toggleControlPanel="showPanel = !showPanel"
       @action="handleAction"
     />
 
     <!-- Album Art -->
-    <AlbumArt 
+    <AlbumArt
       v-if="current"
       :artist="current.artist"
       :album-art-data="albumArtData"
@@ -74,7 +116,7 @@
     />
 
     <!-- Next Track -->
-    <NextTrack 
+    <NextTrack
       v-if="next"
       :next="next"
       :showPath="showPath"
@@ -82,7 +124,7 @@
     />
 
     <!-- Log Section -->
-    <LogSection 
+    <LogSection
       v-if="logEntries.length > 0 && (viewMode === 'default' || viewMode === 'log' || viewMode === 'long' )"
       :entries="logEntries"
       :view-mode="viewMode"
@@ -127,39 +169,6 @@
       @change-view="changeView"
     />
 
-<!-- <button id="backTop" style="
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 8px 12px;
-  background: #0af;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  display: none;
-">↑ Top</button> 
-
-<button
-  v-show="showBackTop"
-  @click="goTop"
-  style="
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 18px 12px;
-/*    background: #007bff; */
-    background: #d94031; */
-    background: #d73e30;
-    color: #fff;
-    border: none;
-    border-radius: 90px;
-    cursor: pointer;
-  "
->
-  ↑ Top
-</button> -->
-
     <!-- Back-to-Top Button -->
     <BackToTop :show="showBackTop" />
 
@@ -167,8 +176,14 @@
   :visible="showPanel"
   :linger="linger"
   :playlistCurrentN="playlistCurrentN"
+  :activeTab="activeTab"
+  :pauseTimer="pauseTimer"
+:pauseTimerDurMin="activeTimer ? Math.floor(pauseTimer?.duration / 60) : 0"
+  :pauseTimerMin="pauseTimerRem * 60"
+  @update:pauseTimerMin="pauseTimerMin"
   @update:playlistCurrentN="val => playlistCurrentN = val"
   @update-current-window="setPlaylistCurrentN"
+  @action="handleAction"
   @cmd="sendWebSocketCommand"
   @close="showPanel = false"
 />
@@ -177,7 +192,16 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, provide } from 'vue'
+//type      TimerV1     struct {
+//     Active           bool      `json:"active"`    // true if running
+//     Duration         int       `json:"duration"`  // original set duration in seconds
+//     EndTime          time.Time `json:"-"`         // internal only
+//     Remaining        int       `json:"remaining"` // computed for StatusV1
+//}
+
+
+import { ref, onMounted, onUnmounted, provide, computed, watch } from 'vue'
+import { sec2sex } from '@/utils/time.js'
 import CurrentlyPlaying from './components/CurrentlyPlaying.vue'
 import AlbumArt from './components/AlbumArt.vue'
 import NextTrack from './components/NextTrack.vue'
@@ -194,13 +218,14 @@ export default {
   name: 'App',
   components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, PlaylistAlbum, PlaylistCurrent, NavButtons, BackToTop, ControlPanel, SearchView },
   setup() {
-    const WS_DEBUG = true
+    const WS_DEBUG = false
     const ws = ref(null)
     const isConnected = ref(false)
     const status = ref(null)
     const current = ref(null)
     const next = ref(null)
     const linger = ref(null)
+//    const pause_timer = ref(null)
     const logEntries = ref([])
     const viewMode = ref('default')
     const reconnectTimer = ref(null)
@@ -218,25 +243,41 @@ export default {
     const playlistCurrentSongs = ref([])
     const playlistAlbumSongs = ref([])
     const logLinesDefault = 24
-//    const logLines = ref(24)
+    const pauseTimer = ref(null)
+    const pauseTimerRem = ref(0)    // live countdown (seconds)
+    const pauseTimerMin = ref(0)
+    const menuLeft = ref(20)
+    let pauseInt = null
     const logLines = ref(logLinesDefault)
-
     let logFlushTimer = null
-
     // NEW FLAG TO PREVENT INITIAL LOG REQUEST
     let initialLoadDone = false
 
+
+    // -----------------------------
+    // Layout determination
+    // -----------------------------
+
+    const layout = {
+      narrow: ref(false),
+      width: ref(window.innerWidth)
+    }
+
+    const mq = window.matchMedia('(max-width: 768px)')
+
+    const update = () => {
+      layout.narrow.value = mq.matches
+      layout.width.value = window.innerWidth
+    console.log('layout.narrow: ', layout.narrow.value)
+    console.log('layout.width: ', layout.width.value)
+    }
+    provide('layout', layout)
     provide('isConnected', isConnected)
+
 
     // -------------------------------
     // Command Bus for components
     // -------------------------------
-/*    const cmdBus = {
-      send(msg) {
-        ws.value.send(JSON.stringify(msg))
-      }
-    }
-*/
     const cmdBus = {
       send(msg){
         if(!ws.value) return
@@ -360,9 +401,9 @@ export default {
           logAndSend(JSON.stringify({ system: 'mpd', cmd: 'json-log' }))
         }
         else if (viewMode.value === "long" || ( viewMode.value === "log" && loglines.value != "" )) {
-          if (viewMode.value === "long") { 
+          if (viewMode.value === "long") {
             logLines.value = 100
-          } 
+          }
           console.log("logAndSend JSON, logLines=", logLines.value)
           logAndSend(JSON.stringify({ system: 'mpd', cmd: 'json-log-stream', args: logLines.value }))
         }
@@ -424,16 +465,16 @@ export default {
       }
 
       if (data.system && data.cmd && data.response !== undefined) {
-        if(data.system === "mpd" && data.cmd === "delete" && 
-          data.response === "ok" && data.deleted > 0 && 
+        if(data.system === "mpd" && data.cmd === "delete" &&
+          data.response === "ok" && data.deleted > 0 &&
           viewMode.value === 'search'
         ){
           resultBus.emit("playlistChanged")
         }
-        if (data.system === 'player' && data.cmd === 'playlist') {
+        if (data.system === 'playlist' && data.cmd === 'playlist') {
           console.log('playlist response received for viewMode:', viewMode.value, data.response)
         }
-        if (data.system === 'player' && data.cmd === 'playlist') {
+        if (data.system === 'playlist' && data.cmd === 'playlist') {
           if (!Array.isArray(data.response)) {
             console.error('Invalid playlist response:', data.response)
             if (viewMode.value === 'current') {
@@ -452,10 +493,10 @@ export default {
           }
           return
         }
-          if (data.system === 'playlist' && data.cmd === 'changed') {
-            resultBus.emit('playlistChanged', data.response)
-            return
-          }
+        if (data.system === 'playlist' && data.cmd === 'changed') {
+          resultBus.emit('playlistChanged', data.response)
+          return
+        }
       }
 
 
@@ -467,6 +508,34 @@ export default {
         current.value = data.current
         next.value = data.next
         linger.value = data.linger
+        pauseTimer.value = data.pause_timer
+console.log("data.pause_timer:", data.pause_timer)
+console.log("pauseTimer.value:", pauseTimer.value)
+        updatePauseTimer(data.pause_timer)
+
+//// reset existing interval
+//if (pauseInt) {
+//  clearInterval(pauseInt)
+//  pauseInt = null
+//}
+//
+//// start countdown ONLY if active
+//if (pauseTimer.value.active) {
+//  pauseTimerRem.value = pauseTimer.value.remaining
+//
+//  pauseInt = setInterval(() => {
+//    pauseTimerRem.value--
+//
+//    if (pauseTimerRem.value <= 0) {
+//      clearInterval(pauseInt)
+//      pauseInt = null
+//      pauseTimerRem.value = 0
+//    }
+//  }, 1000)
+//} else {
+//  pauseTimerRem.value = 0
+//  pauseTimerMin.value = 0
+//}
 
         let albumKey
         const cur = data.current
@@ -575,7 +644,7 @@ export default {
         console.log('Action playlist_album received')
         viewMode.value = 'album'
         sendCommand(JSON.stringify({
-          system: 'player',
+          system: 'playlist',
           cmd: 'playlist',
           args: 'album'
         }))
@@ -584,7 +653,7 @@ export default {
 
       if (action === 'playlist_current') {
         sendCommand(JSON.stringify({
-          system: 'player',
+          system: 'playlist',
           cmd: 'playlist',
           args: { current: playlistCurrentN.value ?? playlistCurrentN.value }
         }))
@@ -592,12 +661,51 @@ export default {
         return
       }
 
+//      if (action === 'pause_timer_on') {
+//        console.log("timer triggered: ", pauseTimerDurMin)
+//        sendCommand(JSON.stringify({
+//          system: 'pause_timer',
+//          cmd: 'on',
+//          args: pauseTimerDurMin * 60
+//        }))
+//        return
+//      }
+
       if (typeof action === 'object') {
+
+
+if (typeof action === 'object') {
+  if (action.type === 'pause_timer_on') {
+    const sec = (Number(action.min) || 0) * 60
+    if (sec <= 0) return
+
+    sendCommand(JSON.stringify({
+      system: 'pause_timer',
+      cmd: 'on',
+      args: sec
+    }))
+    return
+  }
+
+  if (action.type === 'pause_timer_off') {
+    sendCommand(JSON.stringify({
+      system: 'pause_timer',
+      cmd: 'off'
+    }))
+    return
+  }
+}
+
+
+
+
+
+
         if (action.type === 'playlist_album') {
           console.log('Action Object: playlist_album received')
           viewMode.value = 'album'
           sendCommand(JSON.stringify({
-            system: 'player',
+            system: 'playlist',
             cmd: 'playlist',
             args: 'album'
           }))
@@ -607,7 +715,7 @@ export default {
         if (action.type === 'playlist_current') {
           viewMode.value = 'current'
           sendCommand(JSON.stringify({
-            system: 'player',
+            system: 'playlist',
             cmd: 'playlist',
             args: { current: action.n ?? playlistCurrentN.value }
           }))
@@ -626,6 +734,7 @@ export default {
 
       const map = {
         toggle_playback: JSON.stringify({ system: 'player', cmd: 'togglestate' }),
+        pause_playback: JSON.stringify({ system: 'player', cmd: 'pause'}),
         next_track: JSON.stringify({ system:'mpd', cmd:'next' }),
         reset_track: JSON.stringify({ system:'mpd', cmd:'restart' }),
         enable_random: JSON.stringify({ system:'mpd', cmd:'random', args:'1' }),
@@ -637,9 +746,11 @@ export default {
         toggle_single: JSON.stringify({ system:'mpd', cmd:'togglesingle' }),
         toggle_repeat: JSON.stringify({ system:'mpd', cmd:'togglerepeat' }),
         ignore: JSON.stringify({ system:'mpd', cmd:'ignore' }),
-        up_volume: JSON.stringify({ system:'pulseaudio', cmd:'up_volume'}),
-        down_volume: JSON.stringify({ system:'pulseaudio', cmd:'down_volume'}),
-        mute_volume: JSON.stringify({ system:'pulseaudio', cmd:'mute_volume'}),
+        up_volume: JSON.stringify({ system:'pulseaudio', cmd:'up_volume' }),
+        down_volume: JSON.stringify({ system:'pulseaudio', cmd:'down_volume' }),
+        mute_volume: JSON.stringify({ system:'pulseaudio', cmd:'mute_volume' }),
+//        pause_timer_on: JSON.stringify({ system:'pause_timer', cmd:'on', args:'pauseTimerDur' }),
+//        pause_timer_off: JSON.stringify({ system:'pause_timer', cmd:'off' }),
         toggle_output: 'toggle-output',
         linger_start: 'linger-start',
         linger_next: JSON.stringify({ system:'linger', cmd:'next' }),
@@ -650,19 +761,6 @@ export default {
     }
 
     const changeView = (mode) => { viewMode.value = mode }
-
-
-//  function showAlbumPlaylist() {
-//    viewMode.value = 'album'
-//  }
-//
-//  function showCurrentPlaylist() {
-//    viewMode.value = 'window'
-//  }
-//
-//  function showLog() {
-//    viewMode.value = 'log'
-//  }
 
 
     const handleVisibilityChange = () => {
@@ -700,6 +798,36 @@ export default {
       }
     }
 
+    const updatePauseTimer = (t) => {
+      if (pauseInt) {
+        clearInterval(pauseInt)
+        pauseInt = null
+      }
+
+      if (t?.active) {
+        pauseTimerRem.value = t.remaining
+        console.log("pauseTimerRem.value:", pauseTimerRem.value)
+        pauseInt = setInterval(() => {
+          pauseTimerRem.value--
+
+          if (pauseTimerRem.value <= 0) {
+            clearInterval(pauseInt)
+            pauseInt = null
+            pauseTimerRem.value = 0
+          }
+        }, 1000)
+      } else {
+        pauseTimerRem.value = 0
+      }
+    }
+
+
+// const activeTimer = computed(() => pauseTimer.value?.active || pauseTimer.value?.duration > 0)
+const activeTimer = computed(() => pauseTimer.value?.active)
+console.log('pauseTimer.value:', pauseTimer.value)
+console.log('activeTimer.value:', activeTimer.value)
+console.log('pauseTimer.value?.active:', pauseTimer.value?.active)
+
     const seekTo = (seconds) => {
       const payload = {
         system: "mpd",
@@ -726,8 +854,16 @@ export default {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
+
+    // this doesn't work:
+    // 1. `file` doesn't exist here.  Presumabyly it's like status.player.file or some bullshit
+    // 2. the GoBE doesn't accept any args at this point
+    // 3. it had been coded to use `URI`, presumably from the client, but there's no arg parsing
+    // 4. and so now it's coded to get the currentsong's file and use that in c.ReadPicture
+    // 5. and there's no fallback to the other picture method, artwhatever.
+
     const refreshAlbumArt = (file) => {
-      logAndSend(JSON.stringify({ system: 'albumart', cmd: 'get', args: file }))
+      logAndSend(JSON.stringify({ system: 'mpd', cmd: 'albumart', args: file }))
     }
 
     // Unified keydown handler
@@ -760,55 +896,74 @@ export default {
 
     }
 
-//    onMounted(() => {
-//      connectWebSocket()
-//      document.addEventListener('visibilitychange', handleVisibilityChange)
-//      window.addEventListener('focus', handleFocus)
-//
-//      // --- attach keydown listener ---
-//      window.addEventListener('keydown', handleKeydown)
-//      window.addEventListener('scroll', handleScroll)
-//    })
-//
-//    onUnmounted(() => {
-//      ws.value?.close()
-//      if (reconnectTimer.value) clearTimeout(reconnectTimer.value)
-//      document.removeEventListener('visibilitychange', handleVisibilityChange)
-//      window.removeEventListener('focus', handleFocus)
-//
-//      // --- detach keydown listener ---
-//      window.removeEventListener('keydown', handleKeydown)
-//    })
 
-onMounted(() => {
-  connectWebSocket()
-  document.addEventListener('visibilitychange', handleVisibilityChange)
-  window.addEventListener('focus', handleFocus)
-//  window.addEventListener('scroll', handleScroll)
+    const statusLine = document.querySelector('.album.desktop')
+    if (statusLine) {
+      const rect = statusLine.getBoundingClientRect()
+      this.left = rect.left + rect.width * 1.5
+    }
 
-  // --- attach keydown listener for multiple shortcuts ---
-  window.addEventListener('keydown', handleKeydown)
+watch(activeTimer, (v) => {
+  console.log('activeTimer changed:', v)
 })
 
-onUnmounted(() => {
-  ws.value?.close()
-  if (reconnectTimer.value) clearTimeout(reconnectTimer.value)
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
-  window.removeEventListener('focus', handleFocus)
-  window.removeEventListener('scroll', handleScroll)
+    onMounted(() => {
+      connectWebSocket()
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('focus', handleFocus)
+    //  window.addEventListener('scroll', handleScroll)
 
-  // --- detach keydown listener ---
-  window.removeEventListener('keydown', handleKeydown)
-})
+      // --- attach keydown listener for multiple shortcuts ---
+      window.addEventListener('keydown', handleKeydown)
 
+      let chk = setInterval(() => {
+        const el = document.querySelector('.album.desktop')
+        console.log('MENU RETRY:', !!el)
+
+        if (el) {
+          const r = el.getBoundingClientRect()
+          menuLeft.value = r.left + r.width * 1.5
+          clearInterval(chk)
+        }
+      }, 50)
+
+      update()
+      window.addEventListener('resize', update)
+      mq.addEventListener('change', update)
+    })
+
+    onUnmounted(() => {
+      ws.value?.close()
+      if (reconnectTimer.value) clearTimeout(reconnectTimer.value)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('scroll', handleScroll)
+
+      // --- detach keydown listener ---
+      window.removeEventListener('keydown', handleKeydown)
+
+      // --- clear timer interval ---
+      if (pauseInt) clearInterval(pauseInt)
+      mq.removeEventListener('change', update)
+    })
 
 
     return {
-      status, current, next, linger, logEntries, viewMode, albumArtData, 
-      handleAction, changeView, sendWebSocketCommand, blockLimitPrompt, 
+      status, current, next, linger, pauseTimer, logEntries, viewMode, albumArtData,
+      handleAction, changeView, sendWebSocketCommand, blockLimitPrompt,
       showBackTop: true, goTop, showPanel, showPath, ringColor, seekTo,
-      playlistCurrentN, playlistCurrentSongs, playlistAlbumSongs, setPlaylistCurrentN
+      playlistCurrentN, playlistCurrentSongs, playlistAlbumSongs, setPlaylistCurrentN,
+      sec2sex, pauseTimerRem, pauseTimerMin, activeTab, menuLeft, activeTimer,
     }
   }
 }
 </script>
+
+<style>
+.menu-btn.mobile {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+}
+
+</style>

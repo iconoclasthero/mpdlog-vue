@@ -23,7 +23,7 @@
     <div style="display:flex;border-bottom:1px solid #444;">
       <div @click="tab='linger'" :style="tabStyle('linger')">linger</div>
       <div @click="tab='playlist'" :style="tabStyle('playlist')">playlist</div>
-      <div @click="tab='audio'" :style="tabStyle('audio')">audio</div>
+      <div @click="tab='timer'" :style="tabStyle('timer')">pause timer</div>
     </div>
 
     <!-- linger tab -->
@@ -151,236 +151,315 @@
 
 
 
-    <!-- audio tab -->
-    <div v-if="tab==='audio'" style="padding:10px;">nothing yet</div>
+    <!-- timer tab -->
+    <div v-if="tab==='timer'" style="padding:10px;">
+
+      <div style="margin-top:14px;">
+        <div>pause timer (min)</div>
+
+        <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
+          <input type="number"
+            v-model.number="pauseTimerDurMin"
+            style="width:70px; padding:2px 4px;">
+
+          <label style="display:flex; align-items:center; cursor:pointer;">
+<!--            <span :style="{ background: pauseEnabled ? '#d73e30' : '#ccc' }"
+              style="width:42px;height:22px;border-radius:11px;position:relative;transition:0.2s;"
+            >
+
+              <span
+                :style="{ transform: pauseEnabled ? 'translateX(20px)' : 'translateX(0)' }"
+                style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:0.2s;"
+              >
+              </span>
+            </span> -->
+            <input type="checkbox" v-model="pauseEnabled" style="display:none">
+            <span
+              :style="{ background: pauseEnabled ? '#d73e30' : '#ccc' }"
+              style="width:42px;height:22px;border-radius:11px;position:relative;transition:0.2s;"
+            >
+              <span
+                :style="{ transform: pauseEnabled ? 'translateX(20px)' : 'translateX(0)' }"
+                style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:0.2s;"
+              >
+              </span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
-<script>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+<script setup>
+import { ref, computed, watch, inject } from 'vue'
 
-export default {
-  name: 'ControlPanel',
-  props: {
-    visible: Boolean,
-    linger: Object,
-    playlistCurrentN: Number
-  },
-  emits: ['cmd', 'close', 'update:playlistCurrentN'],
-  setup(props, { emit }) {
-    const tab = ref('linger')
-    const x = ref(40)
-    const y = ref(80)
-    const dragging = ref(false)
+const layout = inject('layout')
 
-    const blocklimit = ref(0)
-    const blockEnabled = ref(false)
-    const limit = ref(0)
-    const count = ref(0)
-    const xyStart = ref(null)
-    const xyEnd = ref('')
-    const xyEnabled = ref(false)
+const props = defineProps({
+  visible: Boolean,
+  linger: Object,
+  playlistCurrentN: Number,
+  pauseTimer: Object,
+  pauseTimerDurMin: Number,
+  pauseTimerMin: Number,
+})
 
-    const localPlaylistN = ref(Number(props.playlistCurrentN) || 12)
 
-    const panelStyle = computed(() => ({
-      position:'fixed',
-      left: x.value + 'px',
-      top: y.value + 'px',
-      width:'340px',
-      background:'#1e1e1e',
-      color:'#eee',
-      borderRadius:'6px',
-      boxShadow:'0 0 12px rgba(0,0,0,0.6)',
-      zIndex: 9999
-    }))
+const emit = defineEmits([
+  'cmd',
+  'close',
+  'update:playlistCurrentN',
+	'action',
+  'update:pauseTimerDurMin',
+//  'update:pauseTimer'
+])
 
-    const tabStyle = (name) => ({
-      flex: 1,
-      padding: '6px',
-      cursor: 'pointer',
-      background: tab.value === name ? '#333' : 'transparent'
+const tab = ref('linger')
+const x = ref(40)
+const y = ref(80)
+const dragging = ref(false)
+
+const blocklimit = ref(0)
+const blockEnabled = ref(false)
+const limit = ref(0)
+const count = ref(0)
+const xyStart = ref(null)
+const xyEnd = ref('')
+const xyEnabled = ref(false)
+
+const localPlaylistN = ref(Number(props.playlistCurrentN) || 12)
+
+/* NEW: pause timer state (UI only) */
+const pauseTimerDurMin = ref(props.pauseTimerDurMin || 0)
+console.log('[CPnl] Started')
+
+// only initialize on mount/open
+//watch(() => props.pauseTimerDurMin, (v) => {
+//  if (v != null && pauseTimerDurMin.value === 0) {
+//    pauseTimerDurMin.value = v
+//  }
+//}, { immediate: true })
+
+watch(() => props.pauseTimerDurMin, (v) => {
+  if (v != null) {
+    pauseTimerDurMin.value = v
+  }
+}, { immediate: true })
+
+
+//const pauseEnabled = computed({
+//  get: () => !!props.pauseTimer?.active,
+//  set: (val) => {
+//    if (val) {
+//      pause_timer_on()
+//    } else {
+//      pause_timer_off()
+//    }
+//  }
+//})
+
+//const pauseEnabled = computed({
+////  get: () => pauseTimerDurMin.value > 0,
+////  set: (val) => {
+////    const min = Number(pauseTimerDurMin.value) || 0
+////    emit('action', {
+////      action: val ? 'pause_timer_on' : 'pause_timer_off',
+////      pauseTimerDurMin: min
+////    })
+////  }
+//	get: () => !!props.pauseTimer?.active,
+//	set: (val) => {
+//	  const min = Number(pauseTimerDurMin.value) || 0
+//
+//	  if (val) {
+//	    emit('action', 'pause_timer_on')
+////	    emit('cmd', {
+////	      system: 'pause_timer',
+////	      cmd: 'on',
+////	      args: min * 60
+////	    })
+//	  } else {
+//	    emit('action', 'pause_timer_off')
+//	  }
+//		console.log('pauseEnabled setter:', val)
+//	}
+//})
+
+
+const pauseEnabled = computed({
+  get: () => !!props.pauseTimer?.active,
+  set: (val) => {
+    emit('action', {
+      type: val ? 'pause_timer_on' : 'pause_timer_off',
+      min: Number(pauseTimerDurMin.value) || 0
     })
-
-    let ox = 0
-    let oy = 0
-
-    const startDrag = (ev) => {
-      dragging.value = true
-      ox = ev.clientX - x.value
-      oy = ev.clientY - y.value
-      window.addEventListener('mousemove', move)
-      window.addEventListener('mouseup', stop)
-    }
-
-    const move = (ev) => {
-      if (!dragging.value) return
-      x.value = ev.clientX - ox
-      y.value = ev.clientY - oy
-    }
-
-    const stop = () => {
-      dragging.value = false
-      window.removeEventListener('mousemove', move)
-      window.removeEventListener('mouseup', stop)
-    }
-
-    const emitCmd = (cmd, args) => {
-      emit('cmd', { system: 'linger', cmd, args })
-    }
+  }
+})
 
 
-    function loadXY(data) {
-      if (data.lingerxy) {
-        xyEnabled.value = true
-        xyStart.value = data.lingerx
-        xyEnd.value = data.lingery
-      } else {
-        xyEnabled.value = false
-        xyStart.value = null
-        xyEnd.value = ''
-      }
-    }
+console.log('[CPnl] props.pauseTimerMin:', props.pauseTimerMin)
+console.log('[CPnl] paueEnabled:', pauseEnabled)
+console.log('[CPnl] props.pauseTimerDurMin', props.pauseTimerDurMin)
 
-    function toggleXY() {
-      if (xyEnabled.value) {
-        // TURNING OFF
-        xyEnabled.value = false
-        xyStart.value = null
-        xyEnd.value = ''
+const panelStyle = computed(() => ({
+  position:'fixed',
+  left: x.value + 'px',
+  top: y.value + 'px',
+//  width:'85vw',
+  width: layout.narrow.value ? '85vw' : '340px',
+  background:'#1e1e1e',
+  color:'#eee',
+  borderRadius:'6px',
+  boxShadow:'0 0 12px rgba(0,0,0,0.6)',
+  zIndex: 9999
+}))
 
-        emit('cmd', {
-          system: 'linger',
-          cmd: 'xy',
-          args: {
-            lingerxy: false,
-            lingerx: 0,
-            lingery: 0,
-            xyinc: false
-          }
-        })
+const tabStyle = (name) => ({
+  flex: 1,
+  padding: '6px',
+  cursor: 'pointer',
+  background: tab.value === name ? '#333' : 'transparent'
+})
 
-        return
-      }
+let ox = 0
+let oy = 0
 
-      const x = Number(xyStart.value)
-      if (!Number.isInteger(x) || x < 0) return
+const startDrag = (ev) => {
+  dragging.value = true
+  ox = ev.clientX - x.value
+  oy = ev.clientY - y.value
+  window.addEventListener('mousemove', move)
+  window.addEventListener('mouseup', stop)
+}
 
-      const rawY = String(xyEnd.value).trim()
-      if (!rawY) return
+const move = (ev) => {
+  if (!dragging.value) return
+  x.value = ev.clientX - ox
+  y.value = ev.clientY - oy
+}
 
-      const hasPlus  = rawY.startsWith('+')
-      const hasMinus = rawY.startsWith('-')
-      const hasSign  = hasPlus || hasMinus
+const stop = () => {
+  dragging.value = false
+  window.removeEventListener('mousemove', move)
+  window.removeEventListener('mouseup', stop)
+}
 
-      if ((hasPlus || hasMinus) && rawY.length === 1) return
+const emitCmd = (cmd, args) => {
+  emit('cmd', { system: 'linger', cmd, args })
+}
 
-      const y = Number(rawY)
-      if (!Number.isInteger(y)) return
+/* ------------------ pause timer ------------------ */
 
-      // reject +0 / -0
-      if (hasSign && y === 0) return
+//const pause_timer_on = () => {
+//  const min = Number(pauseTimerDurMin.value) || 0
+//  if (min <= 0) return
+//  sec = min * 60
+//  emit('action', { action: 'pause_timer_on', pauseTimerDurMin: pauseTimerDurMin.value })
+////  emit('cmd', {
+////    action: 'pause_timer_on',
+////    pauseTimerDurMin: min
+////  })
+//}
+//
+//const pause_timer_off = () => {
+//  emit('cmd', {
+//    action: 'pause_timer_off'
+//  })
+//}
 
-      xyEnabled.value = true
-
-      emit('cmd', {
-        system: 'linger',
-        cmd: 'xy',
-        args: {
-          lingerxy: true,
-          lingerx: x,
-          lingery: y,
-          xyinc: hasSign
-        }
-      })
-    }
-
-
-    function toggleBlocklimit() {
-      blockEnabled.value = !blockEnabled.value
-
-      if (blockEnabled.value) {
-        emit('cmd', {
-          system: 'linger',
-          cmd: 'blocklimit',
-          args: blocklimit.value
-        })
-      } else {
-        blocklimit.value = 0
-        emit('cmd', {
-          system: 'linger',
-          cmd: 'blocklimit',
-          args: 0
-        })
-      }
-    }
-
-    watch(() => props.linger?.blocklimit, (val) => {
-      if (typeof val === 'number') {
-        blocklimit.value = val
-        blockEnabled.value = val > 0
-      }
-    })
-
-    watch(() => props.linger,
-      (val) => {
-        if (!val) return
-        loadXY(val)
-      },
-      { immediate: true, deep: true }
-    )
-
-    watch(blocklimit, (val) => {
-      if (val === 0 && blockEnabled.value) {
-        blockEnabled.value = false
-
-        emit('cmd', {
-          system: 'linger',
-          cmd: 'blocklimit',
-          args: 0
-        })
-      }
-    })
-
-//    watch(
-//      () => props.playlistCurrentN,
-//      (val) => {
-//        if (typeof val === 'number') {
-//          localPlaylistN.value = val
-//        }
-//      }
-//    )
-
-    watch(
-      () => props.playlistCurrentN,
-      (val) => {
-        const n = Number(val) || 12
-        localPlaylistN.value = n
-      }
-    )
-
-
-    watch(localPlaylistN, (val) => {
-      emit('update:playlistCurrentN', Number(val) || 12 )
-    })
-
-    return {
-      tab,
-      panelStyle,
-      tabStyle,
-      startDrag,
-      limit,
-      count,
-      xyStart,
-      xyEnd,
-      xyEnabled,
-      toggleXY,
-      emitCmd,
-      blocklimit,
-      blockEnabled,
-      toggleBlocklimit,
-      localPlaylistN
-    }
+function loadXY(data) {
+  if (data.lingerxy) {
+    xyEnabled.value = true
+    xyStart.value = data.lingerx
+    xyEnd.value = data.lingery
+  } else {
+    xyEnabled.value = false
+    xyStart.value = null
+    xyEnd.value = ''
   }
 }
+
+function toggleXY() {
+  if (xyEnabled.value) {
+    xyEnabled.value = false
+    xyStart.value = null
+    xyEnd.value = ''
+
+    emit('cmd', {
+      system: 'linger',
+      cmd: 'xy',
+      args: { lingerxy: false, lingerx: 0, lingery: 0, xyinc: false }
+    })
+    return
+  }
+
+  const xval = Number(xyStart.value)
+  if (!Number.isInteger(xval) || xval < 0) return
+
+  const rawY = String(xyEnd.value).trim()
+  if (!rawY) return
+
+  const hasPlus  = rawY.startsWith('+')
+  const hasMinus = rawY.startsWith('-')
+  const hasSign  = hasPlus || hasMinus
+
+  if ((hasPlus || hasMinus) && rawY.length === 1) return
+
+  const yval = Number(rawY)
+  if (!Number.isInteger(yval)) return
+  if (hasSign && yval === 0) return
+
+  xyEnabled.value = true
+
+  emit('cmd', {
+    system: 'linger',
+    cmd: 'xy',
+    args: {
+      lingerxy: true,
+      lingerx: xval,
+      lingery: yval,
+      xyinc: hasSign
+    }
+  })
+}
+
+function toggleBlocklimit() {
+  blockEnabled.value = !blockEnabled.value
+
+  emit('cmd', {
+    system: 'linger',
+    cmd: 'blocklimit',
+    args: blockEnabled.value ? blocklimit.value : 0
+  })
+
+  if (!blockEnabled.value) blocklimit.value = 0
+}
+
+watch(() => props.linger?.blocklimit, (val) => {
+  if (typeof val === 'number') {
+    blocklimit.value = val
+    blockEnabled.value = val > 0
+  }
+})
+
+watch(() => props.linger, (val) => {
+  if (!val) return
+  loadXY(val)
+}, { immediate: true, deep: true })
+
+watch(blocklimit, (val) => {
+  if (val === 0 && blockEnabled.value) {
+    blockEnabled.value = false
+    emitCmd('blocklimit', 0)
+  }
+})
+
+watch(() => props.playlistCurrentN, (val) => {
+  localPlaylistN.value = Number(val) || 12
+})
+
+watch(localPlaylistN, (val) => {
+  emit('update:playlistCurrentN', Number(val) || 12)
+})
 </script>
