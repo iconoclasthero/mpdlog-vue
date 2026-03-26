@@ -120,6 +120,20 @@
                   title="Return">
             ↩️
           </button>
+          <button v-if="viewMode !== 'search'" 
+                  type="button" 
+                  @click="$emit('change-view', 'search')" 
+                  class="btn btn-secondary" 
+                  title="Open search view">
+            🔍
+          </button>
+          <button v-else 
+                  type="button" 
+                  @click="$emit('change-view', 'viewdefault')" 
+                  class="btn btn-danger" 
+                  title="Return">
+            ↩️
+          </button>
         </form>
       </div>
     </div>

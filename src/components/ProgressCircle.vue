@@ -34,6 +34,7 @@ const props = defineProps({
   playing: { type: Boolean, default: true }
 })
 
+const debug = false
 const emit = defineEmits(['seek', 'action'])
 
 const radius = 52
@@ -43,16 +44,21 @@ let timer = null
 
 
 const arcPath = computed(() => {
-  if (!props.duration) return ""
-
-  const percent = localElapsed.value / props.duration
-  const theta = percent * 2 * Math.PI
-
-  if (theta <= 0) return ""
-
   const cx = 60
   const cy = 60
   const r = radius
+
+// use an arbitrarily large donimnator so we always return a percent
+// which could be erroniously small in the case of no duration
+  const percent = localElapsed.value / ( props.duration || 3600 )
+  let theta = percent * 2 * Math.PI
+
+// Clamp theta to a sufficiently small number such that it is 0.01% * 2 * pi
+// as limit approching zero is not available this solves elaped=0
+
+  const MIN_THETA = 0.01/100 * 2 * Math.PI
+  if (theta <= 0 || isNaN(theta) || !isFinite(theta)) theta = MIN_THETA
+  if (theta > 2 * Math.PI ) theta = 2 * Math.PI
 
   const startAngle = -theta / 2
   const endAngle   =  theta / 2
@@ -69,6 +75,17 @@ const arcPath = computed(() => {
   const end   = toXY(endAngle)
 
   const largeArcFlag = theta > Math.PI ? 1 : 0
+
+  // debug error messages; can probably be removed next time you see this:
+  if ( debug && ( percent > 0.995 || percent < 0.001 || isNaN(start.x) || isNaN(start.y)))
+    console.log('     percent=', percent * 100,
+              '\n    duration=', props.duration,
+              '\n       theta=', theta,
+              '\n  startAngle=', startAngle,
+              '\n    endAngle=', endAngle,
+              '\n       start=', start,
+              '\n         end=', end,
+              '\nlargeArcFlag=', largeArcFlag,)
 
   return `
     M ${start.x} ${start.y}

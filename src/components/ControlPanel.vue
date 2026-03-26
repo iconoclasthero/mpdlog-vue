@@ -156,23 +156,13 @@
 
       <div style="margin-top:14px;">
         <div>pause timer (min)</div>
-
+<!--
         <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
           <input type="number"
             v-model.number="pauseTimerDurMin"
             style="width:70px; padding:2px 4px;">
 
           <label style="display:flex; align-items:center; cursor:pointer;">
-<!--            <span :style="{ background: pauseEnabled ? '#d73e30' : '#ccc' }"
-              style="width:42px;height:22px;border-radius:11px;position:relative;transition:0.2s;"
-            >
-
-              <span
-                :style="{ transform: pauseEnabled ? 'translateX(20px)' : 'translateX(0)' }"
-                style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:0.2s;"
-              >
-              </span>
-            </span> -->
             <input type="checkbox" v-model="pauseEnabled" style="display:none">
             <span
               :style="{ background: pauseEnabled ? '#d73e30' : '#ccc' }"
@@ -184,8 +174,90 @@
               >
               </span>
             </span>
+
+
+
+
+
+
           </label>
+-->
+<!--
+<div style="position:relative; display:inline-block;">
+  <input
+    type="number"
+    v-model.number="pauseTimerDurMin"
+    style="width:70px; padding:2px 20px 2px 4px;"
+  >
+
+  <span
+    v-if="pauseTimerDurMin > 0"
+    @click="pauseTimerDurMin = 0"
+    style="
+      position:absolute;
+      right:4px;
+      top:20%;
+      transform:translateY(-50%);
+      cursor:pointer;
+      color:#aaa;
+      font-size:12px;
+    "
+  >
+    ✖
+  </span>
+</div>
         </div>
+-->
+<div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
+
+  <!-- input + X -->
+  <div style="position:relative; display:inline-block;">
+    <input
+      type="number"
+      v-model.number="pauseTimerDurMin"
+      style="width:70px; padding:2px 20px 2px 4px;"
+    >
+
+    <span
+      v-if="pauseTimerDurMin > 0"
+      @click="pauseTimerDurMin = 0"
+      style="
+        position:absolute;
+        right:4px;
+        top:50%;
+        transform:translateY(-50%);
+        cursor:pointer;
+        color:#aaa;
+        font-size:12px;
+      "
+    >
+      ✖
+    </span>
+  </div>
+
+  <!-- toggle -->
+  <label style="display:flex; align-items:center; cursor:pointer;">
+    <input type="checkbox" v-model="pauseEnabled" style="display:none">
+    <span
+      :style="{ background: pauseEnabled ? '#d73e30' : '#ccc' }"
+      style="width:42px;height:22px;border-radius:11px;position:relative;transition:0.2s;"
+    >
+      <span
+        :style="{ transform: pauseEnabled ? 'translateX(20px)' : 'translateX(0)' }"
+        style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:0.2s;"
+      >
+      </span>
+    </span>
+  </label>
+
+</div>
+
+<div style="margin-top:10px; display:flex; gap:8px;">
+  <button @click="addorset(30)">30</button>
+  <button @click="addorset(60)">60</button>
+  <button @click="addorset(90)">90</button>
+</div>
+
       </div>
     </div>
   </div>
@@ -201,7 +273,7 @@ const props = defineProps({
   linger: Object,
   playlistCurrentN: Number,
   pauseTimer: Object,
-  pauseTimerDurMin: Number,
+//  pauseTimerDurMin: Number,
   pauseTimerMin: Number,
 })
 
@@ -234,69 +306,53 @@ const localPlaylistN = ref(Number(props.playlistCurrentN) || 12)
 const pauseTimerDurMin = ref(props.pauseTimerDurMin || 0)
 console.log('[CPnl] Started')
 
-// only initialize on mount/open
 //watch(() => props.pauseTimerDurMin, (v) => {
-//  if (v != null && pauseTimerDurMin.value === 0) {
+//  if (v != null) {
 //    pauseTimerDurMin.value = v
 //  }
 //}, { immediate: true })
-
-watch(() => props.pauseTimerDurMin, (v) => {
-  if (v != null) {
-    pauseTimerDurMin.value = v
-  }
-}, { immediate: true })
-
-
+//
 //const pauseEnabled = computed({
 //  get: () => !!props.pauseTimer?.active,
 //  set: (val) => {
-//    if (val) {
-//      pause_timer_on()
-//    } else {
-//      pause_timer_off()
-//    }
+//    emit('action', {
+//      type: val ? 'pause_timer_on' : 'pause_timer_off',
+//      min: Number(pauseTimerDurMin.value) || 0
+//    })
 //  }
 //})
 
-//const pauseEnabled = computed({
-////  get: () => pauseTimerDurMin.value > 0,
-////  set: (val) => {
-////    const min = Number(pauseTimerDurMin.value) || 0
-////    emit('action', {
-////      action: val ? 'pause_timer_on' : 'pause_timer_off',
-////      pauseTimerDurMin: min
-////    })
-////  }
-//	get: () => !!props.pauseTimer?.active,
-//	set: (val) => {
-//	  const min = Number(pauseTimerDurMin.value) || 0
-//
-//	  if (val) {
-//	    emit('action', 'pause_timer_on')
-////	    emit('cmd', {
-////	      system: 'pause_timer',
-////	      cmd: 'on',
-////	      args: min * 60
-////	    })
-//	  } else {
-//	    emit('action', 'pause_timer_off')
-//	  }
-//		console.log('pauseEnabled setter:', val)
-//	}
-//})
-
+watch(() => props.pauseTimer, (t) => {
+  if (t?.active && t.duration > 0) {
+    pauseTimerDurMin.value = Math.floor(t.duration / 60)
+  }
+}, { immediate: true })
 
 const pauseEnabled = computed({
   get: () => !!props.pauseTimer?.active,
   set: (val) => {
-    emit('action', {
-      type: val ? 'pause_timer_on' : 'pause_timer_off',
-      min: Number(pauseTimerDurMin.value) || 0
-    })
+    const min = Number(pauseTimerDurMin.value) || 0
+
+    if (val) {
+      emit('action', {
+        type: 'pause_timer_on',
+        min
+      })
+    } else {
+      emit('action', {
+        type: 'pause_timer_off'
+      })
+    }
   }
 })
 
+const addorset = (min) => {
+  if (!pauseEnabled.value && pauseTimerDurMin.value === 0) {
+    pauseTimerDurMin.value = min
+  } else {
+    pauseTimerDurMin.value += min
+  }
+}
 
 console.log('[CPnl] props.pauseTimerMin:', props.pauseTimerMin)
 console.log('[CPnl] paueEnabled:', pauseEnabled)

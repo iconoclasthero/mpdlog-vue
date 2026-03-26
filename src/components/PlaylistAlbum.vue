@@ -1,8 +1,10 @@
 <script setup>
-import { toRefs, computed, watch } from 'vue'
+import { toRefs, computed, watch, onMounted, onUnmounted, inject } from 'vue'
 import { sec2sex } from '@/utils/time.js'
 
 const emit = defineEmits(['action'])
+
+const resultBus = inject('resultBus')
 
 const props = defineProps({
   songs: { type: Array, required: true },
@@ -33,6 +35,21 @@ const currentPos = computed(() => {
 watch(songs, (newVal) => console.log('songs updated', newVal), { deep: true })
 watch(currentPosition, (newVal) => console.log('currentPosition changed', newVal))
 watch(songID, (newVal) => { console.log('SongID changed', newVal), request() })
+
+let off = null
+
+onMounted(() => {
+  request()
+
+  off = resultBus?.on('playlistChanged', () => {
+    console.log('playlistChanged → refreshing playlist_album')
+    request()
+  })
+})
+
+onUnmounted(() => {
+  off && off()
+})
 </script>
 
 <template>

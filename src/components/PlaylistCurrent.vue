@@ -35,7 +35,7 @@
 </template>
 
 <script>
-import { watch, onMounted, computed } from 'vue'
+import { watch, onMounted, onUnmounted, computed, inject } from 'vue'
 import { sec2sex } from '@/utils/time.js'
 
 export default {
@@ -51,6 +51,8 @@ export default {
 
   setup(props, { emit }) {
     console.log('PlaylistCurrent setup fired', props)
+
+    const resultBus = inject('resultBus')
 
     // Group songs by album
     const groupedSongs = computed(() => {
@@ -83,7 +85,19 @@ export default {
     onMounted(() => {
       console.log('PlaylistCurrent mounted')
       request()
+
+      resultBus?.on('playlistChanged', () => {
+        console.log('playlistChanged → refreshing playlist_current')
+        request()
+      })
     })
+
+    // maybe need later?  keep uncommented f/now?
+    const off = resultBus.on('playlistChanged', () => {
+      request()
+    })
+
+    onUnmounted(() => off())
 
     watch(
       () => props.currentPosition,

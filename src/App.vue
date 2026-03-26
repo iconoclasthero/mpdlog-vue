@@ -178,7 +178,6 @@
   :playlistCurrentN="playlistCurrentN"
   :activeTab="activeTab"
   :pauseTimer="pauseTimer"
-:pauseTimerDurMin="activeTimer ? Math.floor(pauseTimer?.duration / 60) : 0"
   :pauseTimerMin="pauseTimerRem * 60"
   @update:pauseTimerMin="pauseTimerMin"
   @update:playlistCurrentN="val => playlistCurrentN = val"

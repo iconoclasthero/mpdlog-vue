@@ -22,16 +22,15 @@
       <strong :class="colorClass">
         <span class="notes">♪ ♫</span>
         {{ stateText }}
-        <span class="notes"> ♫ ♪ </span>&nbsp;
+        <span class="notes"> ♫ ♪</span>&nbsp;
       </strong>
       <a class="pauseicon" href="#" @click.prevent="$emit('action', 'toggle_playback')">
-        <span :class="altClass">&nbsp;{{ toggleIcon }}</span>
+        <span :class="altClass">{{ toggleIcon }}</span>
       </a> &nbsp;&nbsp;&nbsp;
       <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" 
-         title="Playlist|current song">#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}</a>
-      &nbsp;&nbsp;
-      <a class="skipend" href="#" @click.prevent="$emit('action', 'next_track')">
-        <span class="ts">▶</span>
+         title="Playlist|current song">&nbsp#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}</a>
+<!--      <a class="skipend" href="#" @click.prevent="$emit('action', 'next_track')"><span class="ts">▶</span> -->
+      <a href="#" @click.prevent="$emit('action', 'next_track')" style="position:absolute">&nbsp; ⏭
       </a>
     </span>
     <br>
@@ -105,15 +104,24 @@
       <a href="#" @click.prevent="$emit('action', status.player.random ? 'disable_random' : 'enable_random')">random:</a>
       <span class="smallemoji desktop">{{ randomIcon }} &nbsp;</span>
 
-      <a href="#" @click.prevent="$emit('action', 'toggle_consume')">consume:</a> 
-      <span class="smallemoji desktop">{{ consumeIcon }} &nbsp;</span> 
-
+      <a href="#" @click.prevent="$emit('action', 'toggle_consume')">consume:</a>
+      <span class="smallemoji desktop">{{ consumeIcon }} &nbsp;</span>
+<!--
 <a
-  v-if="pauseRemaining > 0"
+  v-if="pauseTimerRem > 0"
   href="#"
   @click.prevent="$emit('toggleControlPanel', 'timer')"
 >
-  timer: {{ pauseDisplay }}&nbsp;
+  timer: {{ pauseTimerDisp }}&nbsp;
+</a>
+-->
+<a v-if="pauseTimerDisp !== '00:00'" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
+  <span v-if="pauseTimerDisp.startsWith('00:')" class="artist">
+    <b>timer: {{ pauseTimerDisp }}</b>
+  </span>
+  <span v-else>
+    timer: {{ pauseTimerDisp }}
+  </span>&nbsp;
 </a>
 
       <!-- Linger desktop -->
@@ -126,8 +134,8 @@
         </template>
         <template v-else>
           <span v-if="linger.paused" class="artist">
-            <a class="pauseicon" href="#" 
-              style="font-style:normal;" 
+            <a class="pauseicon" href="#"
+              style="font-style:normal;"
               @click.prevent="$emit('action','linger_toggle')"> ▮▮</a>
               #{{ lingerStat }}
           </span>
@@ -145,15 +153,30 @@
 
     <!-- Status line - Mobile -->
     <span class="album mobile">
-      <a href="#" @click.prevent="$emit('action', 'mute_volume')">vol.</a>: {{ status.player.volume }}%
+      <a href="#" @click.prevent="$emit('action', 'mute_volume')">vol.:</a> {{ status.player.volume }}%
       <span v-if="repeatIcon">{{ repeatIcon }}</span>
-      <span v-if="status.player.single">single: {{ singleIcon }} &nbsp;</span>
-      <a href="#" @click.prevent="$emit('action', status.player.random ? 'disable_random' : 'enable_random')">random</a>:
+      <a href="#" @click.prevent="$emit('action', 'toggle_single')">
+      <span v-if="status.player.single" class="smallemoji mobile">{{ singleIcon }} &nbsp;</span></a>
+      <a href="#" @click.prevent="$emit('action', 'toggle_random')">random:</a>
       <span class="smallemoji mobile">{{ randomIcon }}</span>
-      <span v-if="status.player.consume"><br>consume: <span class="smallemoji mobile" style="font-style:normal">{{ consumeIcon }}</span></span>
+      <a href="#" @click.prevent="$emit('action', 'toggle_consume')">
+      consume: </a><span class="smallemoji mobile" style="font-style:normal">{{ consumeIcon }}</span>
 
+      <br>
+<!--      <a v-if="pauseTimerRem > 0" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
+      <span v-if="pauseTimerRem < 60" class="artist mobile"> timer: <span class="artist mobile">{{ pauseTimerDisp }}</span></span>&nbsp;
+      </a>
+-->
+<a v-if="pauseTimer.remaining > 0" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
+  <span v-if="pauseTimer.remaining < 60" class="artist mobile">
+    <b>timer: {{ pauseTimerDisp }}</b>
+  </span>
+  <span v-else>
+    timer: {{ pauseTimerDisp }}
+  </span>&nbsp;
+</a>
       <!-- Linger mobile -->
-      <br>&nbsp;<a href="#" @click.prevent="$emit('action', 'linger_next')">linger{{ lingerXY }}</a>: 
+      <a href="#" @click.prevent="$emit('action', 'linger_next')">{{ linger?.lingerxy ? 'lingerXY:' : 'linger:' }}</a>&nbsp;
       <template v-if="!linger">
         <span class="smallemoji mobile">❌</span>
       </template>
@@ -184,9 +207,12 @@ const props = defineProps({
   linger: Object,
   showPath: Boolean,
   pauseTimer: Object,
-  pauseRemaining: Number,
-  pauseDisplay: String,
+  pauseTimerRem: Number,
+  pauseTimerDisp: String,
 })
+
+console.log('props.pauseTimer.active:', props.pauseTimer.active)
+console.log('props.pauseTimerDisp', props.pauseTimerDisp)
 
 const emit = defineEmits(['action', 'toggleControlPanel'])
 
@@ -228,7 +254,8 @@ const layout = inject('layout')
 
 const repeatIcon = computed(() => '⟳ ')
 const singleIcon = computed(() =>
-  props.status?.player?.single ? '✅' : ''
+//  props.status?.player?.single ? '✅' : ''
+  props.status?.player?.single ? '1️⃣' : ''
 )
 
 const randomIcon = computed(() =>
@@ -238,8 +265,6 @@ const randomIcon = computed(() =>
 const consumeIcon = computed(() =>
   props.status?.player?.consume ? ' ✅' : ' ❌'
 )
-
-const lingerXY = computed(() => '')
 
 const elapsedDisplay = computed(() =>
   sec2sex(elapsed.value || 0)
@@ -292,15 +317,15 @@ watch(
   { immediate: true }
 )
 
-watch(() => props.pauseTimer, (v) => {
-  console.log('pauseTimer', v)
-})
+//watch(() => props.pauseTimerRem, (v) => {
+//  console.log('pauseTimer', v)
+//})
 
 watch(
   () => [elapsed.value, props.status?.player?.duration],
   ([e, d]) => {
     if (!d) return
-    if (e > d * 1.05 ) { 
+    if (e > d * 1.05 ) {
       console.log('CurrentlyPlaying: elapsed > duration * 1.05'),
       emit('action', 'json-status')
     }
