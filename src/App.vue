@@ -325,9 +325,9 @@ export default {
       }
 
 /* ------------------------- CHANGE THESE TWO LINES BEFORE BUILDING PRODUCITON --------------------------- */
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'                              //
-//     const wsUrl = `${protocol}//${window.location.host}/ws`                                              //
-//        const wsUrl = 'ws://192.168.1.2:8008/ws'
+//    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'                              //
+//    const wsUrl = `${protocol}//${window.location.host}/ws`                                              //
+      const wsUrl = 'ws://192.168.1.2:8008/ws'
       console.log('Connecting to WebSocket:', wsUrl)
       ws.value = new WebSocket(wsUrl)
 
