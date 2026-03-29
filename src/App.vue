@@ -78,19 +78,6 @@
   ☰
 </button>
 
-    <!-- Progress Circle -->
-<!--
-    <ProgressCircle
-      v-if="status"
-      :status="status"
-      :elapsed="status.player.elapsed"
-      :duration="status.player.duration"
-      :color="ringColor"
-      :playing="status.player.state==='play'"
-      img-src="/android-icon-96x96.png"
-      @seek="seekTo"
-    />
--->
     <!-- Currently Playing Section -->
     <CurrentlyPlaying
       v-if="status"
@@ -113,6 +100,7 @@
       :artist="current.artist"
       :album-art-data="albumArtData"
       :mbArtistID="current.musicbrainz_artistid"
+      @refreshArt="refreshAlbumArt"
     />
 
     <!-- Next Track -->
@@ -217,7 +205,9 @@ export default {
   name: 'App',
   components: { ProgressCircle, CurrentlyPlaying, AlbumArt, NextTrack, LogSection, PlaylistAlbum, PlaylistCurrent, NavButtons, BackToTop, ControlPanel, SearchView },
   setup() {
-    const WS_DEBUG = false
+    let WS_DEBUG = false
+    let debug = false
+    const componentDebug = ref(false)
     const ws = ref(null)
     const isConnected = ref(false)
     const status = ref(null)
@@ -236,6 +226,7 @@ export default {
     const activeTab = ref('linger')
     const showPath = ref(false)
 //  const ringColor = ref('#d94031')
+//  const ringColor = ref('#db1212') // ok for phone?
     const ringColor = ref('#d73e30')
     const logBuffer = []
     const playlistCurrentN = ref(12)   // the +/- around current playlist so that number of songs is (2*n)+1, e.g., grep -C<n>
@@ -267,12 +258,14 @@ export default {
     const update = () => {
       layout.narrow.value = mq.matches
       layout.width.value = window.innerWidth
-    console.log('layout.narrow: ', layout.narrow.value)
-    console.log('layout.width: ', layout.width.value)
+      if ( debug ) {
+        console.log('layout.narrow: ', layout.narrow.value)
+        console.log('layout.width: ', layout.width.value)
+      }
     }
     provide('layout', layout)
     provide('isConnected', isConnected)
-
+    provide('debug', componentDebug)
 
     // -------------------------------
     // Command Bus for components
@@ -331,9 +324,10 @@ export default {
         return
       }
 
-      const wsUrl = 'ws://192.168.1.2:8008/ws'
-//    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-//    const wsUrl = `${protocol}//${window.location.host}/ws`
+/* ------------------------- CHANGE THESE TWO LINES BEFORE BUILDING PRODUCITON --------------------------- */
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'                              //
+//       const wsUrl = `${protocol}//${window.location.host}/ws`                                              //
+//         const wsUrl = 'ws://192.168.1.2:8008/ws'
       console.log('Connecting to WebSocket:', wsUrl)
       ws.value = new WebSocket(wsUrl)
 
@@ -345,10 +339,34 @@ export default {
       }
 
       ws.value.onmessage = async (ev) => {
-        if (ev.data instanceof Blob || ev.data instanceof ArrayBuffer) {
-          const blob = ev.data instanceof Blob ? ev.data : new Blob([ev.data])
-          if (albumArtData.value?.startsWith('blob:')) URL.revokeObjectURL(albumArtData.value)
-          albumArtData.value = blob.size > 0 ? URL.createObjectURL(blob) : null
+//        if (ev.data instanceof Blob || ev.data instanceof ArrayBuffer) {
+////          const blob = ev.data instanceof Blob ? ev.data : new Blob([ev.data])
+////          const mimeType = data?.mimetype || 'image/jpeg' // fallback
+//          const blob = ev.data instanceof Blob ? ev.data : new Blob([ev.data], { type: 'image/jpeg' })
+//          if (albumArtData.value?.startsWith('blob:')) URL.revokeObjectURL(albumArtData.value)
+//          albumArtData.value = blob.size > 0 ? URL.createObjectURL(blob) : null
+if (ev.data instanceof Blob || ev.data instanceof ArrayBuffer) {
+  const buffer = ev.data instanceof Blob
+    ? await ev.data.arrayBuffer()
+    : ev.data
+
+  // Optional: detect type from magic bytes (JPEG vs PNG)
+  const bytes = new Uint8Array(buffer)
+  let mime = 'image/jpeg' // fallback
+
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+    mime = 'image/png'
+  } else if (bytes[0] === 0xFF && bytes[1] === 0xD8) {
+    mime = 'image/jpeg'
+  }
+
+  const blob = new Blob([buffer], { type: mime })
+
+  if (albumArtData.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(albumArtData.value)
+  }
+
+  albumArtData.value = blob.size > 0 ? URL.createObjectURL(blob) : null
         } else {
           let textData = typeof ev.data === 'string' ? ev.data : new TextDecoder().decode(ev.data)
           try {
@@ -374,7 +392,6 @@ export default {
       ws.value.onerror = (err) => console.error('WebSocket error:', err)
       ws.value.onclose = () => {
         console.log('[WS CLOSED]', { code: event.code, reason: event.reason, wasClean: event.wasClean })
-      //  console.log('WebSocket disconnected')
         isConnected.value = false
         reconnectTimer.value = setTimeout(connectWebSocket, 3000)
       }
@@ -508,8 +525,10 @@ export default {
         next.value = data.next
         linger.value = data.linger
         pauseTimer.value = data.pause_timer
-console.log("data.pause_timer:", data.pause_timer)
-console.log("pauseTimer.value:", pauseTimer.value)
+        if ( debug ) {
+          console.log("data.pause_timer:", data.pause_timer)
+          console.log("pauseTimer.value:", pauseTimer.value)
+        }
         updatePauseTimer(data.pause_timer)
 
 //// reset existing interval
@@ -611,8 +630,12 @@ console.log("pauseTimer.value:", pauseTimer.value)
     // Outgoing commands
     // -------------------------------
     const sendCommand = (cmd) => {
+      console.trace('sendCommand called with:', cmd)
       logAndSend(cmd)
-      setTimeout(requestStatus, 100)
+      if (cmd !== 'json-status' && !cmd.includes('json-status')) {
+        setTimeout(requestStatus, 100)
+      }
+    //  setTimeout(requestStatus, 100)
     }
 
     const sendWebSocketCommand = (cmdObj) => {
@@ -623,7 +646,7 @@ console.log("pauseTimer.value:", pauseTimer.value)
     // Action handler @ App.vue
     // -------------------------------
     const handleAction = (action) => {
-
+      if ( debug ) console.log("handleAction: ", action)
       if (action == 'viewDefault') {
         console.log('Action viewDefault received')
         viewMode.value = 'default'
@@ -733,30 +756,34 @@ if (typeof action === 'object') {
 
       const map = {
         toggle_playback: JSON.stringify({ system: 'player', cmd: 'togglestate' }),
-        pause_playback: JSON.stringify({ system: 'player', cmd: 'pause'}),
-        next_track: JSON.stringify({ system:'mpd', cmd:'next' }),
-        reset_track: JSON.stringify({ system:'mpd', cmd:'restart' }),
-        enable_random: JSON.stringify({ system:'mpd', cmd:'random', args:'1' }),
-        disable_random: JSON.stringify({ system:'mpd', cmd:'random', args:'0' }),
-        toggle_random: JSON.stringify({ system:'mpd', cmd:'togglerandom' }),
-        enable_consume: JSON.stringify({ system:'mpd', cmd:'consume', args:'1' }),
+        resume_playback: JSON.stringify({ system: 'player', cmd: 'resume' }),
+        pause_playback:  JSON.stringify({ system: 'player', cmd: 'pause'}),
+        next_track:      JSON.stringify({ system:'mpd', cmd:'next' }),
+        reset_track:     JSON.stringify({ system:'mpd', cmd:'restart' }),
+        enable_random:   JSON.stringify({ system:'mpd', cmd:'random', args:'1' }),
+        disable_random:  JSON.stringify({ system:'mpd', cmd:'random', args:'0' }),
+        toggle_random:   JSON.stringify({ system:'mpd', cmd:'togglerandom' }),
+        enable_consume:  JSON.stringify({ system:'mpd', cmd:'consume', args:'1' }),
         disable_consume: JSON.stringify({ system:'mpd', cmd:'consume', args:'0' }),
-        toggle_consume: JSON.stringify({ system:'mpd', cmd:'toggleconsume' }),
-        toggle_single: JSON.stringify({ system:'mpd', cmd:'togglesingle' }),
-        toggle_repeat: JSON.stringify({ system:'mpd', cmd:'togglerepeat' }),
-        ignore: JSON.stringify({ system:'mpd', cmd:'ignore' }),
-        up_volume: JSON.stringify({ system:'pulseaudio', cmd:'up_volume' }),
-        down_volume: JSON.stringify({ system:'pulseaudio', cmd:'down_volume' }),
-        mute_volume: JSON.stringify({ system:'pulseaudio', cmd:'mute_volume' }),
-//        pause_timer_on: JSON.stringify({ system:'pause_timer', cmd:'on', args:'pauseTimerDur' }),
-//        pause_timer_off: JSON.stringify({ system:'pause_timer', cmd:'off' }),
-        toggle_output: 'toggle-output',
+        toggle_consume:  JSON.stringify({ system:'mpd', cmd:'toggleconsume' }),
+        toggle_single:   JSON.stringify({ system:'mpd', cmd:'togglesingle' }),
+        toggle_repeat:   JSON.stringify({ system:'mpd', cmd:'togglerepeat' }),
+        ignore:          JSON.stringify({ system:'mpd', cmd:'ignore' }),
+        up_volume:       JSON.stringify({ system:'pulseaudio', cmd:'up_volume' }),
+        down_volume:     JSON.stringify({ system:'pulseaudio', cmd:'down_volume' }),
+        mute_volume:     JSON.stringify({ system:'pulseaudio', cmd:'mute_volume' }),
+//      pause_timer_on:  JSON.stringify({ system:'pause_timer', cmd:'on', args:'pauseTimerDur' }),
+//      pause_timer_off: JSON.stringify({ system:'pause_timer', cmd:'off' }),
+        linger_next:     JSON.stringify({ system:'linger', cmd:'next' }),
         linger_start: 'linger-start',
-        linger_next: JSON.stringify({ system:'linger', cmd:'next' }),
         linger_toggle: 'toggle',
+        toggle_output: 'toggle-output',
         json_status: 'json-status'
       }
-      if (map[action]) sendCommand(map[action])
+      if (map[action]) {
+        if ( debug ) console.log('sending:', map[action])
+        sendCommand(map[action])
+      }
     }
 
     const changeView = (mode) => { viewMode.value = mode }
@@ -771,7 +798,7 @@ if (typeof action === 'object') {
 
     const handleFocus = () => {
       if (isConnected.value) {
-        console.log('handleFocus triggered → requesting status')
+        if ( debug ) console.log('handleFocus triggered → requesting status')
         requestStatus()
         // requestLog() removed here to prevent extra first-load log
         // Only refresh art if track changed (status/log response will handle it)
@@ -805,7 +832,7 @@ if (typeof action === 'object') {
 
       if (t?.active) {
         pauseTimerRem.value = t.remaining
-        console.log("pauseTimerRem.value:", pauseTimerRem.value)
+        if ( debug ) console.log("pauseTimerRem.value:", pauseTimerRem.value)
         pauseInt = setInterval(() => {
           pauseTimerRem.value--
 
@@ -823,10 +850,11 @@ if (typeof action === 'object') {
 
 // const activeTimer = computed(() => pauseTimer.value?.active || pauseTimer.value?.duration > 0)
 const activeTimer = computed(() => pauseTimer.value?.active)
-console.log('pauseTimer.value:', pauseTimer.value)
-console.log('activeTimer.value:', activeTimer.value)
-console.log('pauseTimer.value?.active:', pauseTimer.value?.active)
-
+if ( debug ) {
+  console.log('pauseTimer.value:', pauseTimer.value)
+  console.log('activeTimer.value:', activeTimer.value)
+  console.log('pauseTimer.value?.active:', pauseTimer.value?.active)
+}
     const seekTo = (seconds) => {
       const payload = {
         system: "mpd",
@@ -836,18 +864,6 @@ console.log('pauseTimer.value?.active:', pauseTimer.value?.active)
 
       ws.value.send(JSON.stringify(payload))
     }
-
-//    const handleKeydown = (ev) => {
-//      // Alt+B → blocklimit modal
-//      if (ev.altKey && ev.key.toLowerCase() === 'b') {
-//        ev.preventDefault()
-//        blockLimitPrompt()
-//      }
-//    }
-
-//    const handleScroll = () => {
-//      showBackTop.value = window.scrollY > 100
-//    }
 
     const goTop = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -861,8 +877,9 @@ console.log('pauseTimer.value?.active:', pauseTimer.value?.active)
     // 4. and so now it's coded to get the currentsong's file and use that in c.ReadPicture
     // 5. and there's no fallback to the other picture method, artwhatever.
 
-    const refreshAlbumArt = (file) => {
-      logAndSend(JSON.stringify({ system: 'mpd', cmd: 'albumart', args: file }))
+    const refreshAlbumArt = (file = current.value.file) => {
+      if ( debug ) console.log('current.value.file: ', current.value.file)
+      logAndSend(JSON.stringify({ system: 'mpd', cmd: 'albumart', args: current.value.file }))
     }
 
     // Unified keydown handler
@@ -879,6 +896,29 @@ console.log('pauseTimer.value?.active:', pauseTimer.value?.active)
       if (ev.altKey && key === 'c') {
         ev.preventDefault()
         showPanel.value = !showPanel.value
+      }
+
+      // Alt+D → turn debug true
+      if (ev.altKey && key === 'd') {
+        if ( debug && WS_DEBUG && componentDebug.value) {
+          WS_DEBUG = false
+          debug = false
+          componentDebug.value = false
+          console.log('debug set to ', debug)
+          console.log('componentDebug set to ', componentDebug)
+          console.log('WS_DEBUG set to ', WS_DEBUG)
+          return
+        }
+        if ( debug && componentDebug.value ) {
+          WS_DEBUG = true
+          console.log('WS_DEBUG set to ', WS_DEBUG)
+        }
+        if ( debug ) {
+          componentDebug.value = true
+          console.log('componentDebug set to ', componentDebug.value)
+        }
+        debug = true
+        console.log('debug set to ', debug)
       }
 
       // Alt+S → toggle Search
@@ -902,9 +942,11 @@ console.log('pauseTimer.value?.active:', pauseTimer.value?.active)
       this.left = rect.left + rect.width * 1.5
     }
 
-watch(activeTimer, (v) => {
-  console.log('activeTimer changed:', v)
-})
+    if ( debug ) {
+      watch(activeTimer, (v) => {
+        console.log('activeTimer changed:', v)
+      })
+    }
 
     onMounted(() => {
       connectWebSocket()
@@ -917,7 +959,7 @@ watch(activeTimer, (v) => {
 
       let chk = setInterval(() => {
         const el = document.querySelector('.album.desktop')
-        console.log('MENU RETRY:', !!el)
+        if ( debug ) console.log('MENU RETRY:', !!el)
 
         if (el) {
           const r = el.getBoundingClientRect()
@@ -948,7 +990,7 @@ watch(activeTimer, (v) => {
 
 
     return {
-      status, current, next, linger, pauseTimer, logEntries, viewMode, albumArtData,
+      status, current, next, linger, pauseTimer, logEntries, viewMode, albumArtData, refreshAlbumArt,
       handleAction, changeView, sendWebSocketCommand, blockLimitPrompt,
       showBackTop: true, goTop, showPanel, showPath, ringColor, seekTo,
       playlistCurrentN, playlistCurrentSongs, playlistAlbumSongs, setPlaylistCurrentN,

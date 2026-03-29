@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted, onUnmounted } from "vue"
+import { ref, watch, computed, onMounted, onUnmounted, inject, watchEffect } from "vue"
 
 const props = defineProps({
   elapsed: { type: Number, required: true },
@@ -34,7 +34,16 @@ const props = defineProps({
   playing: { type: Boolean, default: true }
 })
 
-const debug = false
+const debugRef = inject('debug') || ref(false) // gets the reactive ref
+
+let debug = false
+watchEffect(() => {
+  debug = debugRef.value
+})
+
+
+//const debug = false
+
 const emit = defineEmits(['seek', 'action'])
 
 const radius = 52
@@ -144,9 +153,9 @@ watch(
       timer = setInterval(() => {
         localElapsed.value += 1
         if (localElapsed.value > props.duration * 1.1) {
-          console.log("elapsed exceeded duration * 1.1 → refresh json-status")
+          if ( debug ) console.log("elapsed exceeded duration * 1.1 → refresh json_status")
 //          emit('refresh-status')
-          emit('action', 'json-status')
+          emit('action', 'json_status')
         }
       }, 1000)
     }

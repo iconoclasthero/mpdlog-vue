@@ -27,8 +27,9 @@
       <a class="pauseicon" href="#" @click.prevent="$emit('action', 'toggle_playback')">
         <span :class="altClass">{{ toggleIcon }}</span>
       </a> &nbsp;&nbsp;&nbsp;
-      <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" 
-         title="Playlist|current song">&nbsp#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}</a>
+      <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" title="Playlist|current song">
+        &nbsp#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}
+      </a>
 <!--      <a class="skipend" href="#" @click.prevent="$emit('action', 'next_track')"><span class="ts">▶</span> -->
       <a href="#" @click.prevent="$emit('action', 'next_track')" style="position:absolute">&nbsp; ⏭
       </a>
@@ -38,7 +39,7 @@
     <!-- Progress bar and timer -->
     <span class="time" id="current_track">
       <a href="#" @click.prevent="$emit('action', 'reset_track')" title="Restart track">
-        elapsed <span id="elapsed_display">{{ elapsedDisplay }}</span>/<span id="total_display">{{ totalDisplay }}</span> 
+        elapsed <span id="elapsed_display">{{ elapsedDisplay }}</span>/<span id="total_display">{{ totalDisplay }}</span>
         (<span id="percent_display">{{ percentDisplay }}</span>%)
       </a>
 <!--      <br>
@@ -93,7 +94,8 @@
 
     <!-- Status line - Desktop -->
     <span class="album desktop" style="font-style:normal">
-      <a href="#" @click.prevent="$emit('action', 'mute_volume')">volume</a>: {{ status.player.volume }}%
+      <a href="#" @click.prevent="$emit('action', 'mute_volume')">
+        volume</a>: {{ status.player.volume }}%
       <span>
         <a href="#"
            class="repeat-toggle" style="font-style:normal"
@@ -105,47 +107,61 @@
       <span class="smallemoji desktop">{{ randomIcon }} &nbsp;</span>
 
       <a href="#" @click.prevent="$emit('action', 'toggle_consume')">consume:</a>
-      <span class="smallemoji desktop">{{ consumeIcon }} &nbsp;</span>
+      <span class="smallemoji desktop">{{ consumeIcon }}</span>
 <!--
-<a
-  v-if="pauseTimerRem > 0"
-  href="#"
-  @click.prevent="$emit('toggleControlPanel', 'timer')"
->
-  timer: {{ pauseTimerDisp }}&nbsp;
+<a v-if="pauseTimerRem > 0" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
+  timer: {{ pauseTimerDisp }}
 </a>
 -->
+<!-- monospace timer display example: -->
+<!-- <span style="font-family: monospace;">  {{ pauseTimerDisp }} </span> -->
+<template v-if="pauseTimerDisp !== '00:00'">
 <a v-if="pauseTimerDisp !== '00:00'" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
   <span v-if="pauseTimerDisp.startsWith('00:')" class="artist">
-    <b>timer: {{ pauseTimerDisp }}</b>
+    <b>
+      timer: {{ pauseTimerDisp }}
+    </b>&nbsp
   </span>
   <span v-else>
-    timer: {{ pauseTimerDisp }}
-  </span>&nbsp;
+    timer: {{ pauseTimerDisp }}&nbsp
+  </span>
 </a>
+</template>
+<template v-else>&nbsp</template>
 
       <!-- Linger desktop -->
       <span>
-        <a href="#" @click.prevent="$emit('action', 'linger_next')">
-          {{ linger?.lingerxy ? 'lingerXY' : 'linger' }}:&nbsp;
-        </a>
+        <a href="#" @click.prevent="$emit('toggleControlPanel', 'linger')">
+          {{ linger?.lingerxy ? 'lingerXY' : 'linger' }}:</a>&nbsp;
         <template v-if="!linger">
           <a class="smallemoji" href="#" @click.prevent="$emit('action', 'linger_start')">❌</a>
         </template>
         <template v-else>
           <span v-if="linger.paused" class="artist">
-            <a class="pauseicon" href="#"
-              style="font-style:normal;"
-              @click.prevent="$emit('action','linger_toggle')"> ▮▮</a>
+            <a class="pauseicon" href="#" style="font-style:normal;" @click.prevent="$emit('action','linger_toggle')">
+              ▮▮
+            </a>
+            <a href="#" @click.prevent="$emit('toggleControlPanel', 'linger')">
               #{{ lingerStat }}
+            </a>
           </span>
           <span v-else class="playing">
-            <a href="#" style="font-style:normal;" class="hover-tooltip"
-              @click.prevent="$emit('action','linger_toggle')"><span class="tooltip-text">Pause Linger</span><a class="skipend" style="font-style:normal"> ▶</a>&nbsp;&nbsp;&nbsp;</a>
+            <a href="#" style="font-style:normal;" class="hover-tooltip" @click.prevent="$emit('action','linger_toggle')">
+              <span class="tooltip-text">Pause Linger</span>
+              <span class="skipend" style="font-style:normal; color:green;"> ▶</span>&nbsp;&nbsp;&nbsp;
+            </a>
+            <a class="font-style:normal" href="#" @click.prevent="$emit('toggleControlPanel', 'linger')">
+            <span class="font-style:normal">
               #{{ lingerStat }}
+            </span>
+            </a>
           </span>
-				<a class="hover-tooltip" href="#" style="font-style:normal"
-				   @click.prevent="$emit('action','linger_next')"><span class="tooltip-text">Next Linger Block</span><a class="skipend" style= "font-style:normal; color:#007bff;">&nbsp;&nbsp;▶▮</a></a>
+            &nbsp;
+  				<a class="hover-tooltip" href="#" style="font-style:normal" @click.prevent="$emit('action','linger_next')">
+            <span class="tooltip-text">Next Linger Block</span>
+            <a class="skipend" style= "font-style:normal; color:#007bff;">▶▮
+            </a>
+          </a>
         </template>
       </span>
     </span>
@@ -154,7 +170,15 @@
     <!-- Status line - Mobile -->
     <span class="album mobile">
       <a href="#" @click.prevent="$emit('action', 'mute_volume')">vol.:</a> {{ status.player.volume }}%
-      <span v-if="repeatIcon">{{ repeatIcon }}</span>
+
+      <!-- <span v-if="repeatIcon">{{ repeatIcon }}</span> -->
+      <span>
+        <a href="#"
+           class="repeat-toggle" style="font-style:normal; text-shadow:0 0 1px currentColor"
+           :class="{ active: status.player.repeat }"
+           @click.prevent="$emit('action', 'toggle_repeat')">⟳</a>&nbsp;</span>
+
+
       <a href="#" @click.prevent="$emit('action', 'toggle_single')">
       <span v-if="status.player.single" class="smallemoji mobile">{{ singleIcon }} &nbsp;</span></a>
       <a href="#" @click.prevent="$emit('action', 'toggle_random')">random:</a>
@@ -167,28 +191,47 @@
       <span v-if="pauseTimerRem < 60" class="artist mobile"> timer: <span class="artist mobile">{{ pauseTimerDisp }}</span></span>&nbsp;
       </a>
 -->
-<a v-if="pauseTimer.remaining > 0" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
-  <span v-if="pauseTimer.remaining < 60" class="artist mobile">
-    <b>timer: {{ pauseTimerDisp }}</b>
-  </span>
-  <span v-else>
-    timer: {{ pauseTimerDisp }}
-  </span>&nbsp;
-</a>
+      <a v-if="pauseTimer.remaining > 0" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
+        <span v-if="pauseTimer.remaining < 60" class="artist mobile">
+          <b>timer: {{ pauseTimerDisp }}</b>
+        </span>
+        <span v-else>
+          timer: {{ pauseTimerDisp }}
+        </span>&nbsp;
+      </a>
+
       <!-- Linger mobile -->
-      <a href="#" @click.prevent="$emit('action', 'linger_next')">{{ linger?.lingerxy ? 'lingerXY:' : 'linger:' }}</a>&nbsp;
+      <a href="#" @click.prevent="$emit('action', 'linger_next')">
+        {{ linger?.lingerxy ? 'lingerXY:' : 'linger:' }}</a>&nbsp;
       <template v-if="!linger">
         <span class="smallemoji mobile">❌</span>
       </template>
-      <template v-else>
-        <span v-if="linger.paused" class="artist">
-          <a href="#" class="pauseicon" @click.prevent="$emit('action','linger_toggle')">▮▮</a>&nbsp;&nbsp;&nbsp;#{{ linger.count || 0 }}/{{ linger.limit || 0 }}
+      <template v-else style="font-style:normal;">
+        <span v-if="linger.paused" style="color:red; font-style:normal;">
+          <a href="#" style="font-style:normal;" @click.prevent="$emit('action','linger_toggle')">
+            ⏯
+          </a>
+          &nbsp;#{{ linger.count || 0 }}/{{ linger.limit || 0 }}
         </span>
-        <span v-else class="playing" style="color:green">
-          <a href="#" @click.prevent="$emit('action','linger_toggle')">▶</a>&nbsp;#{{ linger.count || 0 }}/{{ linger.limit || 0 }}
+        <span v-else style="color:green; font-style:normal;">
+          <a href="#" style="font-style:normal;" @click.prevent="$emit('action','linger_toggle')">
+            ⏯
+          </a>
+          &nbsp;#{{ linger.count || 0 }}/{{ linger.limit || 0 }}
         </span>
+        <a class="hover-tooltip" href="#" style="font-style:normal; color:#007bff;" @click.prevent="$emit('action','linger_next')">
+          <span class="tooltip-text"> Next Linger Block</span>
+<!--            <a class="skipend"style= "font-style:normal; color:#007bff;"> -->
+<!--            <a href="#" @click.prevent="$emit('action', 'linger_next')" style="position:absolute"> -->
+              &nbsp;⏭
+<!--            </a> -->
+<!--          </span> -->
+        </a>
+
+<!--
         &nbsp;&nbsp;
         <a class="skipend hover-tooltip" href="#" @click.prevent="$emit('action','linger_next')"><span class="tooltip-text">▶▮</span></a>
+-->
       </template>
     </span>
 
@@ -197,6 +240,7 @@
 </template>
 
 <script setup>
+const debug = false
 import { ref, computed, watch, onUnmounted, inject } from 'vue'
 import { sec2sex } from '@/utils/time.js'
 
@@ -211,8 +255,10 @@ const props = defineProps({
   pauseTimerDisp: String,
 })
 
-console.log('props.pauseTimer.active:', props.pauseTimer.active)
-console.log('props.pauseTimerDisp', props.pauseTimerDisp)
+if ( debug ) {
+  console.log('props.pauseTimer.active:', props.pauseTimer.active)
+  console.log('props.pauseTimerDisp', props.pauseTimerDisp)
+}
 
 const emit = defineEmits(['action', 'toggleControlPanel'])
 

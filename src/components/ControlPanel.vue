@@ -236,6 +236,7 @@
   </div>
 
   <!-- toggle -->
+<!--
   <label style="display:flex; align-items:center; cursor:pointer;">
     <input type="checkbox" v-model="pauseEnabled" style="display:none">
     <span
@@ -246,6 +247,20 @@
         :style="{ transform: pauseEnabled ? 'translateX(20px)' : 'translateX(0)' }"
         style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:0.2s;"
       >
+      </span>
+    </span>
+  </label>
+-->
+
+
+
+  <!-- toggle switch -->
+  <label style="display:flex; align-items:center; cursor:pointer;">
+    <input type="checkbox" v-model="pauseEnabled" style="display:none">
+    <span :style="{ background: pauseEnabled ? '#d73e30' : '#ccc' }"
+          style="width:42px;height:22px;border-radius:11px;position:relative;transition:0.2s;">
+      <span :style="{ transform: pauseEnabled ? 'translateX(20px)' : 'translateX(0)' }"
+            style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:0.2s;">
       </span>
     </span>
   </label>
@@ -261,9 +276,39 @@
       </div>
     </div>
   </div>
+
+
+
+  <!-- Resume modal -->
+  <div v-if="showResumeModal"
+       style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%);
+              background:#222; color:#fff; padding:20px; border-radius:8px;
+              box-shadow:0 0 12px rgba(0,0,0,0.6); z-index:9999;">
+    <div style="margin-bottom:10px;">
+      Pause timer expired. Resume playback?
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <button @click="emit('action', 'resume_playback'); showResumeModal = false">Yes</button>
+      <button @click="showResumeModal = false">No</button>
+    </div>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
 </template>
 
 <script setup>
+const debug = false
 import { ref, computed, watch, inject } from 'vue'
 
 const layout = inject('layout')
@@ -273,6 +318,7 @@ const props = defineProps({
   linger: Object,
   playlistCurrentN: Number,
   pauseTimer: Object,
+  activeTab: String,
 //  pauseTimerDurMin: Number,
   pauseTimerMin: Number,
 })
@@ -284,6 +330,7 @@ const emit = defineEmits([
   'update:playlistCurrentN',
 	'action',
   'update:pauseTimerDurMin',
+  'updateCurrentWindow',
 //  'update:pauseTimer'
 ])
 
@@ -301,10 +348,12 @@ const xyEnd = ref('')
 const xyEnabled = ref(false)
 
 const localPlaylistN = ref(Number(props.playlistCurrentN) || 12)
+const showResumeModal = ref(false)
+const localTimerRem = ref(props.pauseTimer?.remaining || 0)
 
 /* NEW: pause timer state (UI only) */
-const pauseTimerDurMin = ref(props.pauseTimerDurMin || 0)
-console.log('[CPnl] Started')
+//const pauseTimerDurMin = ref(props.pauseTimerDurMin || 0)
+const pauseTimerDurMin = ref(props.pauseTimerMin || 0)
 
 //watch(() => props.pauseTimerDurMin, (v) => {
 //  if (v != null) {
@@ -339,12 +388,25 @@ const pauseEnabled = computed({
         min
       })
     } else {
+      wasActive.value = false
       emit('action', {
         type: 'pause_timer_off'
       })
+      showResumeModal.value = false
     }
   }
 })
+
+const wasActive = ref(false)
+watch(() => props.pauseTimer?.remaining, (rem, oldRem) => {
+  localTimerRem.value = rem
+  // trigger modal if timer counted down from >0 to 0
+  if (oldRem > 0 && rem === 0 && wasActive.value) {
+    showResumeModal.value = true
+  }
+  wasActive.value = props.pauseTimer?.active
+})
+
 
 const addorset = (min) => {
   if (!pauseEnabled.value && pauseTimerDurMin.value === 0) {
@@ -354,9 +416,11 @@ const addorset = (min) => {
   }
 }
 
-console.log('[CPnl] props.pauseTimerMin:', props.pauseTimerMin)
-console.log('[CPnl] paueEnabled:', pauseEnabled)
-console.log('[CPnl] props.pauseTimerDurMin', props.pauseTimerDurMin)
+if ( debug ) {
+  console.log('[CPnl] props.pauseTimerMin:', props.pauseTimerMin)
+  console.log('[CPnl] paueEnabled:', pauseEnabled)
+  console.log('[CPnl] props.pauseTimerDurMin', props.pauseTimerDurMin)
+}
 
 const panelStyle = computed(() => ({
   position:'fixed',
@@ -481,8 +545,8 @@ function toggleXY() {
 }
 
 function toggleBlocklimit() {
+  console.log('toggleBlocklimit fired')
   blockEnabled.value = !blockEnabled.value
-
   emit('cmd', {
     system: 'linger',
     cmd: 'blocklimit',
@@ -490,6 +554,8 @@ function toggleBlocklimit() {
   })
 
   if (!blockEnabled.value) blocklimit.value = 0
+  console.log('emit action json_status')
+  emit('action', 'json_status')
 }
 
 watch(() => props.linger?.blocklimit, (val) => {
