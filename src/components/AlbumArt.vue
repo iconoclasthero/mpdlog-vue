@@ -1,14 +1,15 @@
 <template>
   <div class="album-art-container">
     <!-- Desktop: unchanged -->
-    <img
-      v-if="albumArtData"
-      :src="albumArtData"
-      @click="$emit('refreshArt')"
-      alt="Album Art"
-      :style="{ maxWidth: `calc(${maxWidth} * 1.2)`, height: 'auto' }"
-    >
 <!--
+    <img
+      v-if="albumArtData && !layout.narrow.value"
+      :src="albumArtData"
+      alt="Album Art"
+      @click="$emit('refreshArt')"
+      :style="{ maxWidth: deskWidth + 'px', height: 'auto' }"
+    >
+
     <img
       v-if="albumArtData && !layout.narrow.value"
       :src="albumArtData"
@@ -16,10 +17,9 @@
       alt="Album Art"
       :style="{ maxWidth: deskWidth + 'px', height: 'auto' }"
     >
--->
-
 
     <!-- Mobile: only show if layout.narrow -->
+<!--
     <img
       v-else-if="albumArtData && layout.narrow.value"
       :src="albumArtData"
@@ -27,8 +27,18 @@
       @click="$emit('refreshArt')"
       :style="{ maxWidth: mobileMaxWidth, height: 'auto' }"
     >
+-->
+
+    <img
+      v-if="albumArtData"
+      :src="albumArtData"
+      alt="Album Art"
+      @click="$emit('refreshArt')"
+      :style="{ height: 'auto', maxWidth: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }"
+    >
 
     <!-- Placeholder / fallback -->
+<!--
     <div v-else-if="isLoading" class="musicdna-placeholder"
          @click="$emit('refreshArt')"
          :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
@@ -46,6 +56,25 @@
          :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
       <img src="../../assets/musicdna.svg" alt="MusicDNA" style="width: 100%; height: auto; fill: #000000 !important;" />
     </div>
+-->
+
+    <div v-else-if="isLoading" class="musicdna-placeholder"
+         @click="$emit('refreshArt')"
+         :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
+      <p>Loading album art...</p>
+    </div>
+
+    <img v-else-if="isDead" class="musicdna-placeholder"
+         :src="deadSVGUrl"
+         alt="Grateful Dead SVG"
+         @click="$emit('refreshArt')"
+         :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
+
+    <img v-else class="musicdna-placeholder"
+         src="../../assets/musicdna.svg"
+         alt="MusicDNA"
+         @click="$emit('refreshArt')"
+         :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
   </div>
   <hr />
 </template>
@@ -78,11 +107,24 @@ const handleClick = (ev) => {
 // Only use layout for mobile
 const layout = inject('layout', { narrow: false })
 //const debugRef = inject('debug', false) // gets the reactive ref
-const debugRef = inject('debug') || ref(false) // gets the reactive ref
+//const debugRef = inject('debug') || ref(false) // gets the reactive ref
+const debugRef = inject('componentDebug')
+
+// console.log('[AlbumArt] [INJECT TYPE]', debugRef, typeof debugRef)
+
 let debug = false
 watchEffect(() => {
-  debug = debugRef.value
+  if (debugRef.value) debug = true
+  else debug = false
 })
+
+if ( debug ) console.log('[DEBUG AlbumArt] ( • )( • )----ԅ(‾⌣‾ԅ)')
+//setInterval(() => {
+//  if (debugRef.value) {
+//    console.log('[INTERVAL DEBUG]', debugRef.value)
+//    debug = debugRef.value
+//  }
+//}, 10000)
 
 const artFactor = 1.25
 const maxWidth = ref(300)       // desktop fallback
@@ -93,9 +135,9 @@ const isDead = ref(false)
 const deadSVGUrl = ref(null)
 
 if ( debug ) {
-  console.log('[AlbumArt] debug=', debug)
-  console.log('[PROPS INIT]', props.artist, props.mbArtistID)
-  console.log('[DEAD] outside onMounted', { isDead: isDead.value, deadSVGUrl: deadSVGUrl.value })
+  console.log('[DEBUG AlbumArt] debug=', debug)
+  console.log('[DEBUG AlbumArt] [PROPS INIT]', props.artist, props.mbArtistID)
+  console.log('[DEBUG AlbumArt] [DEAD] outside onMounted', { isDead: isDead.value, deadSVGUrl: deadSVGUrl.value })
 }
 
 onMounted(() => {

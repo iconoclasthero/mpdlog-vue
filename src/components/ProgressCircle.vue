@@ -34,13 +34,14 @@ const props = defineProps({
   playing: { type: Boolean, default: true }
 })
 
-const debugRef = inject('debug') || ref(false) // gets the reactive ref
+const debugRef = inject('componentDebug') || ref(false) // gets the reactive ref
 
 let debug = false
 watchEffect(() => {
   debug = debugRef.value
 })
 
+if ( debug ) console.log('[DEBUG ProgressCircle] ( • )( • )----ԅ(‾⌣‾ԅ) 1!')
 
 //const debug = false
 
@@ -87,7 +88,8 @@ const arcPath = computed(() => {
 
   // debug error messages; can probably be removed next time you see this:
   if ( debug && ( percent > 0.995 || percent < 0.001 || isNaN(start.x) || isNaN(start.y)))
-    console.log('     percent=', percent * 100,
+    console.log('[DEBUG ProgressCircle]',
+              '\n     percent=', percent * 100,
               '\n    duration=', props.duration,
               '\n       theta=', theta,
               '\n  startAngle=', startAngle,
@@ -102,6 +104,7 @@ const arcPath = computed(() => {
   `
 })
 
+if ( debug ) console.log('[DEBUG ProgressCircle] ( • )( • )----ԅ(‾⌣‾ԅ) 2!')
 
 
 // Update localElapsed when props change
@@ -153,7 +156,9 @@ watch(
       timer = setInterval(() => {
         localElapsed.value += 1
         if (localElapsed.value > props.duration * 1.1) {
-          if ( debug ) console.log("elapsed exceeded duration * 1.1 → refresh json_status")
+          if ( debug ) console.log('[DEBUG ProgressCircle]',
+                                    localElapsed.value,
+                                   'exceeded duration * 1.1 → refresh json_status')
 //          emit('refresh-status')
           emit('action', 'json_status')
         }
