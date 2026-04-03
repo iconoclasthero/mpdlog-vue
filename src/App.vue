@@ -513,9 +513,16 @@ const handleWebSocketMessage = async (event) => {
   }
 
 
-if (data.system === 'pulseaudio' && data.cmd === 'set_volume') {
-  pulse_data.value.volume = data.response
-}
+  if (data.system === 'pulseaudio' && data.cmd === 'set_volume') {
+    pulse_data.value.volume = data.response
+  }
+
+  if (data.system === 'pulseaudio' && data.cmd === 'changed') {
+    pulse_data.value.volume = data.response.volume
+    pulse_data.value.mute = data.response.mute
+    if ( debug ) console.log('PA changed; volume:', data.response.volume)
+    if ( debug ) console.log('PA changed; mute:', data.response.mute)
+  }
 
   if (data.player && data.current) {
     const last = lastFile.value

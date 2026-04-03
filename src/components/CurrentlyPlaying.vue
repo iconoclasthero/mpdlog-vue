@@ -84,46 +84,30 @@
 
     <!-- Status line - Desktop -->
     <span class="album desktop" style="font-style:normal">
-<!--      <a href="#" @click.prevent="$emit('action', 'mute_volume')">
-        volume</a>: {{ status.player.volume }}%
 
-<span @click="showVol = !showVol" style="cursor:pointer;">
-  volume: {{ pulse_data.volume }}%
-</span>
+      <div ref="volWrapDesktop" style="display:inline-block; position:relative;">
+        <a href="#" @click.prevent="toggleVol">
+          volume:</a>&nbsp;<a href="#" @click.prevent="$emit('action', 'mute_volume')" :class="{ 'strikethrough-red': pulse_data.mute }">
+          {{ pulse_data.volume }}%</a>&nbsp;
 
-<div v-if="showVol" class="vol-popup">
-  <input
-    type="range"
-    min="0"
-    max="100"
-    v-model="vol"
-    @input="onVolInput"
-  />
-</div>
--->
+        <div v-if="showVol" class="vol-popup">
+          <div class="vol-row">
+            <button @click="$emit('action', 'mute_volume')">🔇</button>
+            <button @click="$emit('action', 'down_volume')">🔉</button>
 
-<div ref="volWrapDesktop" style="display:inline-block; position:relative;">
-  <a href="#" @click.prevent="toggleVol">
-    volume: {{ pulse_data.volume }}%</a>&nbsp;
+            <input
+              type="range"
+              min="0"
+              max="100"
+              v-model="vol"
+              @input="onVolInput"
+              :style="{ accentColor: volColor }"
+            />
 
-  <div v-if="showVol" class="vol-popup">
-    <div class="vol-row">
-      <button @click="$emit('action', 'mute_volume')">🔇</button>
-      <button @click="$emit('action', 'down_volume')">🔉</button>
-
-      <input
-        type="range"
-        min="0"
-        max="100"
-        v-model="vol"
-        @input="onVolInput"
-        :style="{ accentColor: volColor }"
-      />
-
-      <button @click="$emit('action', 'up_volume')">🔊</button>
-    </div>
-  </div>
-</div>
+            <button @click="$emit('action', 'up_volume')">🔊</button>
+          </div>
+        </div>
+      </div>
 
       <span>
         <a href="#"
@@ -138,21 +122,21 @@
       <a href="#" @click.prevent="$emit('action', 'toggle_consume')">consume:</a>
       <span class="smallemoji desktop">{{ consumeIcon }}</span>
 
-<!-- monospace timer display example: -->
-<!-- <span style="font-family: monospace;">  {{ pauseTimerDisp }} </span> -->
-<template v-if="pauseTimerDisp !== '00:00'">
-<a v-if="pauseTimerDisp !== '00:00'" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
-  <span v-if="pauseTimerDisp.startsWith('00:')" class="artist">
-    <b>
-      timer: {{ pauseTimerDisp }}
-    </b>&nbsp
-  </span>
-  <span v-else>
-    timer: {{ pauseTimerDisp }}&nbsp
-  </span>
-</a>
-</template>
-<template v-else>&nbsp</template>
+      <!-- monospace timer display example: -->
+      <!-- <span style="font-family: monospace;">  {{ pauseTimerDisp }} </span> -->
+      <template v-if="pauseTimerDisp !== '00:00'">
+      <a v-if="pauseTimerDisp !== '00:00'" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
+        <span v-if="pauseTimerDisp.startsWith('00:')" class="artist">
+          <b>
+            timer: {{ pauseTimerDisp }}
+          </b>&nbsp
+        </span>
+        <span v-else>
+          timer: {{ pauseTimerDisp }}&nbsp
+        </span>
+      </a>
+      </template>
+      <template v-else>&nbsp</template>
 
       <!-- Linger desktop -->
       <span>
@@ -194,48 +178,29 @@
 
     <!-- Status line - Mobile -->
     <span class="album mobile">
-<!--      <a href="#" @click.prevent="$emit('action', 'mute_volume')">vol.:</a> {{ status.player.volume }}% -->
-<!-- <div ref="volWrap" style="display:inline-block; position:relative;">
-  <span @click="toggleVol" style="cursor:pointer;">
-    vol.: {{ vol }}%&nbsp;
-  </span>
+      <div ref="volWrapMobile" style="display:inline-block; position:relative;">
+        <a href="#" @click.prevent="toggleVol">
+          vol:</a>&nbsp;<a href="#" @click.prevent="$emit('action', 'mute_volume')" :class="{ 'strikethrough-red': pulse_data.mute }">
+          {{ pulse_data.volume }}%</a>&nbsp;
 
-  <div v-if="showVol" class="vol-popup">
-    <input
-      type="range"
-      min="0"
-      max="100"
-      v-model="vol"
-      @input="onVolInput"
-      @change="onVolCommit"
-      :style="{ accentColor: volColor }"
-    />
-  </div>
-</div>
--->
-<div ref="volWrapMobile" style="display:inline-block; position:relative;">
-  <a href="#" @click.prevent="toggleVol">
-    vol: {{ pulse_data.volume }}%</a>&nbsp;
+        <div v-if="showVol" class="vol-popup">
+          <div class="vol-row">
+            <button @click="$emit('action', 'mute_volume')">🔇</button>
+            <button @click="$emit('action', 'down_volume')">🔉</button>
 
-  <div v-if="showVol" class="vol-popup">
-    <div class="vol-row">
-      <button @click="$emit('action', 'mute_volume')">🔇</button>
-      <button @click="$emit('action', 'down_volume')">🔉</button>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              v-model="vol"
+              @input="onVolInput"
+              :style="{ accentColor: volColor }"
+            />
 
-      <input
-        type="range"
-        min="0"
-        max="100"
-        v-model="vol"
-        @input="onVolInput"
-        :style="{ accentColor: volColor }"
-      />
-
-      <button @click="$emit('action', 'up_volume')">🔊</button>
-    </div>
-  </div>
-</div>
-
+            <button @click="$emit('action', 'up_volume')">🔊</button>
+          </div>
+        </div>
+      </div>
 
       <!-- <span v-if="repeatIcon">{{ repeatIcon }}</span> -->
       <span>
@@ -253,10 +218,7 @@
       consume: </a><span class="smallemoji mobile" style="font-style:normal">{{ consumeIcon }}</span>
 
       <br>
-<!--      <a v-if="pauseTimerRem > 0" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
-      <span v-if="pauseTimerRem < 60" class="artist mobile"> timer: <span class="artist mobile">{{ pauseTimerDisp }}</span></span>&nbsp;
-      </a>
--->
+
       <a v-if="pauseTimer.remaining > 0" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
         <span v-if="pauseTimer.remaining < 60" class="artist mobile">
           <b>timer: {{ pauseTimerDisp }}</b>
@@ -327,11 +289,6 @@ const props = defineProps({
   pauseTimerRem: Number,
   pauseTimerDisp: String,
 })
-
-if ( debug ) {
-  console.log('[DEBUG CurrentlyPlaying] props.pauseTimer.active:', props.pauseTimer.active)
-  console.log('[DEBUG CurrentlyPlaying] props.pauseTimerDisp', props.pauseTimerDisp)
-}
 
 /*------- volume shit -------*/
 const showVol = ref(false)
@@ -493,6 +450,14 @@ const lingerStat = computed(() => {
   return `${l.count}/${limit}`
 })
 
+if ( debug ) {
+  console.log('[DEBUG CurrentlyPlaying] props.pauseTimer.active:', props.pauseTimer.active)
+  console.log('[DEBUG CurrentlyPlaying] props.pauseTimerDisp', props.pauseTimerDisp)
+  console.log('[DEBUG CurrentlyPlaying] props.pulse_data', props.pulse_data.mute)
+}
+
+
+
 watch(
   () => props.status?.player?.elapsed,
   (v) => {
@@ -601,6 +566,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.strikethrough-red {
+  text-decoration: line-through;
+  text-decoration-color: red; /* Changes the line color only */
+  text-decoration-thickness: 3px; /* increase this */
 }
 </style>
 
