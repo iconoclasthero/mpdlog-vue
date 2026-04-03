@@ -10,9 +10,7 @@
       <a class="pauseicon" href="#" @click.prevent="$emit('action', 'toggle_playback')">
         <span :class="altClass">{{ toggleIcon }}</span>
       </a>&nbsp;
-<!--    <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" -->
         <a :class="colorClass" href="#" @click.prevent="$emit('action', { type: 'playlist_current', n: null })"
-
          title="Playlist|current song">#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}</a> &nbsp;
       <a class="skipend" href="#" @click.prevent="$emit('action', 'next_track')">▶▮</a>
     </span>
@@ -30,7 +28,6 @@
       <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" title="Playlist|current song">
         &nbsp#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}
       </a>
-<!--      <a class="skipend" href="#" @click.prevent="$emit('action', 'next_track')"><span class="ts">▶</span> -->
       <a href="#" @click.prevent="$emit('action', 'next_track')" style="position:absolute">&nbsp; ⏭
       </a>
     </span>
@@ -42,8 +39,6 @@
         elapsed <span id="elapsed_display">{{ elapsedDisplay }}</span>/<span id="total_display">{{ totalDisplay }}</span>
         (<span id="percent_display">{{ percentDisplay }}</span>%)
       </a>
-<!--      <br>
-      <progress id="track_progress" :value="percentValue" max="100"></progress> -->
     </span>
     <br>
 
@@ -71,7 +66,6 @@
         <a :href="`https://musicbrainz.org/release/${current.musicbrainz_albumid}`" target="_blank">
           {{ albumDisplay }}&nbsp
         </a>
-<!--        <a href="#" @click.prevent="$emit('action', 'playlist_album')" title="Playlist|album"> -->
         <a href="#" @click.prevent="$emit('action', { type: 'playlist_album', n: null })" title="Playlist|album">
           <i class="bi bi-box-arrow-up-right extlink"></i>
         </a>
@@ -80,10 +74,6 @@
     <br>
 
     <!-- Toggle path display -->
-<!--    <span v-if="showPath" class="album file-path">
-      {{ current.file }}
-      <br>
-    </span> -->
             <div v-if="showPath" class="album file-path">
             <span style="text-decoration: none; display: inline-block;">
             <a :href="'mpdlog://open?path=' + encodeURIComponent(current.file)">
@@ -94,8 +84,47 @@
 
     <!-- Status line - Desktop -->
     <span class="album desktop" style="font-style:normal">
-      <a href="#" @click.prevent="$emit('action', 'mute_volume')">
+<!--      <a href="#" @click.prevent="$emit('action', 'mute_volume')">
         volume</a>: {{ status.player.volume }}%
+
+<span @click="showVol = !showVol" style="cursor:pointer;">
+  volume: {{ pulse_data.volume }}%
+</span>
+
+<div v-if="showVol" class="vol-popup">
+  <input
+    type="range"
+    min="0"
+    max="100"
+    v-model="vol"
+    @input="onVolInput"
+  />
+</div>
+-->
+
+<div ref="volWrapDesktop" style="display:inline-block; position:relative;">
+  <a href="#" @click.prevent="toggleVol">
+    volume: {{ pulse_data.volume }}%</a>&nbsp;
+
+  <div v-if="showVol" class="vol-popup">
+    <div class="vol-row">
+      <button @click="$emit('action', 'mute_volume')">🔇</button>
+      <button @click="$emit('action', 'down_volume')">🔉</button>
+
+      <input
+        type="range"
+        min="0"
+        max="100"
+        v-model="vol"
+        @input="onVolInput"
+        :style="{ accentColor: volColor }"
+      />
+
+      <button @click="$emit('action', 'up_volume')">🔊</button>
+    </div>
+  </div>
+</div>
+
       <span>
         <a href="#"
            class="repeat-toggle" style="font-style:normal"
@@ -108,11 +137,7 @@
 
       <a href="#" @click.prevent="$emit('action', 'toggle_consume')">consume:</a>
       <span class="smallemoji desktop">{{ consumeIcon }}</span>
-<!--
-<a v-if="pauseTimerRem > 0" href="#" @click.prevent="$emit('toggleControlPanel', 'timer')">
-  timer: {{ pauseTimerDisp }}
-</a>
--->
+
 <!-- monospace timer display example: -->
 <!-- <span style="font-family: monospace;">  {{ pauseTimerDisp }} </span> -->
 <template v-if="pauseTimerDisp !== '00:00'">
@@ -150,7 +175,7 @@
               <span class="tooltip-text">Pause Linger</span>
               <span class="skipend" style="font-style:normal; color:green;"> ▶</span>&nbsp;&nbsp;&nbsp;
             </a>
-            <a class="font-style:normal" href="#" @click.prevent="$emit('toggleControlPanel', 'linger')">
+            <a style="font-style:normal" href="#" @click.prevent="$emit('toggleControlPanel', 'linger')">
             <span class="font-style:normal">
               #{{ lingerStat }}
             </span>
@@ -159,8 +184,8 @@
             &nbsp;
   				<a class="hover-tooltip" href="#" style="font-style:normal" @click.prevent="$emit('action','linger_next')">
             <span class="tooltip-text">Next Linger Block</span>
-            <a class="skipend" style= "font-style:normal; color:#007bff;">▶▮
-            </a>
+            <span class="skipend" style= "font-style:normal; color:#007bff;">▶▮
+            </span>
           </a>
         </template>
       </span>
@@ -169,7 +194,48 @@
 
     <!-- Status line - Mobile -->
     <span class="album mobile">
-      <a href="#" @click.prevent="$emit('action', 'mute_volume')">vol.:</a> {{ status.player.volume }}%
+<!--      <a href="#" @click.prevent="$emit('action', 'mute_volume')">vol.:</a> {{ status.player.volume }}% -->
+<!-- <div ref="volWrap" style="display:inline-block; position:relative;">
+  <span @click="toggleVol" style="cursor:pointer;">
+    vol.: {{ vol }}%&nbsp;
+  </span>
+
+  <div v-if="showVol" class="vol-popup">
+    <input
+      type="range"
+      min="0"
+      max="100"
+      v-model="vol"
+      @input="onVolInput"
+      @change="onVolCommit"
+      :style="{ accentColor: volColor }"
+    />
+  </div>
+</div>
+-->
+<div ref="volWrapMobile" style="display:inline-block; position:relative;">
+  <a href="#" @click.prevent="toggleVol">
+    vol: {{ pulse_data.volume }}%</a>&nbsp;
+
+  <div v-if="showVol" class="vol-popup">
+    <div class="vol-row">
+      <button @click="$emit('action', 'mute_volume')">🔇</button>
+      <button @click="$emit('action', 'down_volume')">🔉</button>
+
+      <input
+        type="range"
+        min="0"
+        max="100"
+        v-model="vol"
+        @input="onVolInput"
+        :style="{ accentColor: volColor }"
+      />
+
+      <button @click="$emit('action', 'up_volume')">🔊</button>
+    </div>
+  </div>
+</div>
+
 
       <!-- <span v-if="repeatIcon">{{ repeatIcon }}</span> -->
       <span>
@@ -240,15 +306,22 @@
 </template>
 
 <script setup>
-const debug = false
-import { ref, computed, watch, onUnmounted, inject } from 'vue'
+import { ref, computed, watch, watchEffect, onMounted, onUnmounted, inject } from 'vue'
 import { sec2sex } from '@/utils/time.js'
+
+const debugRef = inject('componentDebug') || ref(false) // gets the reactive ref
+
+let debug = false
+watchEffect(() => {
+  debug = debugRef.value
+})
 
 const props = defineProps({
   status: Object,
   current: Object,
   next: Object,
   linger: Object,
+  pulse_data: Object,
   showPath: Boolean,
   pauseTimer: Object,
   pauseTimerRem: Number,
@@ -256,9 +329,92 @@ const props = defineProps({
 })
 
 if ( debug ) {
-  console.log('props.pauseTimer.active:', props.pauseTimer.active)
-  console.log('props.pauseTimerDisp', props.pauseTimerDisp)
+  console.log('[DEBUG CurrentlyPlaying] props.pauseTimer.active:', props.pauseTimer.active)
+  console.log('[DEBUG CurrentlyPlaying] props.pauseTimerDisp', props.pauseTimerDisp)
 }
+
+/*------- volume shit -------*/
+const showVol = ref(false)
+const vol = ref(0)
+const dragging = ref(false)
+const volWrap = ref(null)
+const volWrapDesktop = ref(null)
+const volWrapMobile  = ref(null)
+
+const volOpenDesktop = ref(false)
+const volOpenMobile  = ref(false)
+
+let volTimer = null
+
+const toggleVol = () => {
+  showVol.value = !showVol.value
+  volOpenDesktop.value = !volOpenDesktop.value
+  volOpenMobile.value = !volOpenMobile.value
+}
+
+//const onClickOutside = (e) => {
+//  if (!volWrap.value) return
+//  if (!volWrap.value.contains(e.target)) {
+//    showVol.value = false
+//    volOpenDesktop.value = false
+//    volOpenMobile.value = false
+//  }
+//}
+
+//const onClickOutside = (e) => {
+////  if (!volWrap.value) return
+//  if (ignoreNextClick) {
+//    ignoreNextClick = false
+//    return
+//  }
+//
+//  console.log('CLICK', e.target, volWrap.value.contains(e.target))
+//
+//
+//  if (!volWrap.value.contains(e.target)) {
+//    volOpenDesktop.value = false
+//    volOpenMobile.value = false
+//  }
+//}
+
+const onClickOutside = (e) => {
+  const inDesktop = volWrapDesktop.value?.contains(e.target)
+  const inMobile  = volWrapMobile.value?.contains(e.target)
+
+  if (!inDesktop && !inMobile) {
+    showVol.value = false
+    volOpenDesktop.value = false
+    volOpenMobile.value = false
+  }
+}
+
+const volColor = computed(() => {
+  if (vol.value < 40) return 'limegreen'
+  if (vol.value < 75) return 'gold'
+  return 'red'
+})
+
+const sendVol = (v) => {
+  emit('action', {
+    system: 'pulseaudio',
+    cmd: 'set_volume',
+    args: v
+  })
+}
+
+
+const onVolInput = (e) => {
+  const v = Number(e.target.value)
+
+  if (volTimer) clearTimeout(volTimer)
+
+  volTimer = setTimeout(() => {
+    sendVol(v)
+  }, 70)
+}
+
+/*--------------------------*/
+
 
 const emit = defineEmits(['action', 'toggleControlPanel'])
 
@@ -363,30 +519,88 @@ watch(
   { immediate: true }
 )
 
-//watch(() => props.pauseTimerRem, (v) => {
-//  console.log('pauseTimer', v)
-//})
+watch(() => props.pauseTimerRem, (v) => {
+  if ( debug ) console.log('[DEBUG CurrentlyPlaying] pauseTimer', v)
+})
 
 watch(
   () => [elapsed.value, props.status?.player?.duration],
   ([e, d]) => {
     if (!d) return
     if (e > d * 1.05 ) {
-      console.log('CurrentlyPlaying: elapsed > duration * 1.05'),
+      console.log('[WARN CurrentlyPlaying] elapsed > duration * 1.05'),
       emit('action', 'json-status')
     }
   }
 )
 
+////watch(() => status.value?.pulseaudio?.volume, (v) => {
+////  if (v != null) vol.value = v
+////})
+////
+////const onVolInput = () => {
+////  emit('action', {
+////    type: 'set_volume',
+////    value: vol.value
+////  })
+////}
+//
+//watch(() => status.value?.pulseaudio?.volume, (v) => {
+//  if (v == null) return
+//  if (!dragging.value) {
+//    vol.value = v
+//  }
+//})
+//
+//const onVolInput = () => {
+//  dragging.value = true
+//}
+//
+//const onVolCommit = () => {
+//  dragging.value = false
+//
+//  emit('action', {
+//    type: 'set_volume',
+//    value: vol.value
+//  })
+//}
+
+watch(() => props.pulse_data?.volume, (v) => {
+  if ( debug ) console.log('[DEBUG CurrentlyPlaying] Vol sync: ', v)
+//  if (typeof v === 'number') {
+  if (typeof v === 'number' && !dragging.value) {
+    vol.value = v
+  }
+}, { immediate: true })
+
+
+onMounted(() => {
+  document.addEventListener('click', onClickOutside)
+})
+
 
 onUnmounted(() => {
   if (timerInterval.value) clearInterval(timerInterval.value)
+  document.removeEventListener('click', onClickOutside)
 })
 </script>
 
 <style scoped>
 .repeat-toggle.active {
   color: #22c55e;
+}
+.vol-popup {
+  position: absolute;
+  background: #222;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+
+.vol-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 </style>
 

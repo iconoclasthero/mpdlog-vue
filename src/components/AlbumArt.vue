@@ -110,8 +110,6 @@ const layout = inject('layout', { narrow: false })
 //const debugRef = inject('debug') || ref(false) // gets the reactive ref
 const debugRef = inject('componentDebug')
 
-// console.log('[AlbumArt] [INJECT TYPE]', debugRef, typeof debugRef)
-
 let debug = false
 watchEffect(() => {
   if (debugRef.value) debug = true
@@ -165,7 +163,7 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
     const modules = import.meta.glob('./dead/*.svg', { eager: true })
     const paths = Object.values(modules).map(m => m.default)
     if (paths.length > 0) deadSVGUrl.value = paths[Math.floor(Math.random() * paths.length)]
-    if ( debug ) console.log('[DEAD]', { isDead: isDead.value, deadSVGUrl: deadSVGUrl.value })
+    if ( debug ) console.log('[DEBUG AlbumArt] [DEAD]', { isDead: isDead.value, deadSVGUrl: deadSVGUrl.value })
   }
 }, { immediate: true })
 

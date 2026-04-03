@@ -1,6 +1,14 @@
 <script setup>
-import { toRefs, computed, watch, onMounted, onUnmounted, inject } from 'vue'
+import { toRefs, computed, watch, onMounted, onUnmounted, inject, watchEffect } from 'vue'
 import { sec2sex } from '@/utils/time.js'
+
+const debugRef = inject('componentDebug')
+
+let debug = false
+watchEffect(() => {
+  if (debugRef.value) debug = true
+  else debug = false
+})
 
 const emit = defineEmits(['action'])
 
@@ -15,14 +23,14 @@ const props = defineProps({
 
 const { songs, songID, currentPosition } = toRefs(props)
 
-console.log('songID', songID)
+if ( debug ) console.log('[DEBUG PlaylistAlbum] songID', songID)
 
 const playSong = (pos) => {
   emit('action', { type: 'playPosition', pos })
 }
 
 const request = () => {
-  console.log('Requesting playlist_album'),
+  if ( debug ) console.log('[DEBUG PlaylistAlbum] Requesting playlist_album'),
   emit('action', { type: 'playlist_album' })
 }
 
@@ -32,9 +40,30 @@ const currentPos = computed(() => {
 })
 
 // optional: watch for changes just to log updates
-watch(songs, (newVal) => console.log('songs updated', newVal), { deep: true })
-watch(currentPosition, (newVal) => console.log('currentPosition changed', newVal))
-watch(songID, (newVal) => { console.log('SongID changed', newVal), request() })
+if ( debug && false) {
+  watch(songs, (newVal) => console.log('[DEBUG PlaylistAlbum] songs updated', newVal), { deep: true })
+  watch(currentPosition, (newVal) => console.log('[DEBUG PlaylistAlbum] currentPosition changed', newVal))
+  watch(songID, (newVal) => { console.log('[DEBUG PlaylistAlbum] SongID changed', newVal), request() })
+}
+
+if (debug) {
+  watch(
+    () => ({
+      songs: songs.value,
+      pos: currentPosition.value,
+      id: songID.value
+    }),
+    (v) => {
+      console.log('[DEBUG PlaylistAlbum]', {
+        songs: v.songs,
+        pos: v.pos,
+        id: v.id
+      })
+    },
+    { deep: true }
+  )
+}
+
 
 let off = null
 
@@ -42,7 +71,7 @@ onMounted(() => {
   request()
 
   off = resultBus?.on('playlistChanged', () => {
-    console.log('playlistChanged → refreshing playlist_album')
+    console.log('[DEBUG PlaylistAlbum] playlistChanged → refreshing playlist_album')
     request()
   })
 })

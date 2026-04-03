@@ -1,0 +1,110 @@
+#!/bin/bash
+set -euo pipefail
+
+appvue='src/App.vue'
+
+# Show current wsUrl lines for verification
+grep -A3 'CHANGE THESE TWO' "$appvue"
+printf \\n
+read -rp "Press enter to continue..."
+
+# -----------------------
+# Production build: uncomment template, comment hardcoded
+# -----------------------
+sed -i -E '
+  # Uncomment protocol line (remove leading // only)
+  s|^//(\s*const protocol = window\.location\.protocol.*)|\1|
+  # Uncomment wsUrl template line (remove leading // only)
+  s|^//(\s*const wsUrl = `\$\{protocol\}//\$\{window\.location\.host\}/ws`.*)|\1|
+  # Comment hardcoded wsUrl line (prefix with //, keep indentation)
+  s|^(\s*const wsUrl = .ws://192.*)|//\1|
+' "$appvue"
+
+grep -A3 'CHANGE THESE TWO' "$appvue"
+printf \\n
+read -rp "Press enter to run npm buil"
+
+# -----------------------
+# Build & commit
+# -----------------------
+sudo npm run build
+
+# -----------------------
+# Revert: comment template, uncomment hardcoded
+# -----------------------
+sed -i -E '
+  # Comment protocol line
+  s|^(\s*const protocol = window\.location\.protocol.*)|//\1|
+  # Comment wsUrl template line
+  s|^(\s*const wsUrl = `\$\{protocol\}//\$\{window\.location\.host\}/ws`.*)|//\1|
+  # Uncomment hardcoded wsUrl line
+  s|^//(\s*const wsUrl = .ws://192.*)|\1|
+' "$appvue"
+
+grep -A3 'CHANGE THESE TWO' "$appvue"
+printf \\n
+read -rp "Press enter to commit and push"
+
+git commit -m "building production $(date)" -a
+git push
+
+exit 0
+
+
+
+
+
+#!/bin/bash
+set -euo pipefail
+
+appvue='src/App.vue'
+
+grep -C4 const\ wsUrl "$appvue"
+
+read -rp boobs
+
+sed -i -E '
+  s|^(\s+const wsUrl = .ws://192.*)|// \1|      # Comment the hardcoded wsUrl line
+  s|^//(\s+const protocol.*)|\1|       # Uncomment protocol line
+  s|^//(\s+const wsUrl = `\$\{protocol\}.*)|\1|       # Uncomment wsUrl template line
+' "$appvue"
+
+#  s|^(\s*const wsUrl = '\''ws://192\.168\.1\.2:8008/ws'\''.*)|// \1|
+  # Uncomment the protocol line exactly
+#  s|^//(\s*const protocol = window\.location\.protocol.*)|\1|
+  # Uncomment the wsUrl template line exactly
+#  s|^//(\s*const wsUrl = `\$\{protocol\}//\$\{window\.location\.host\}/ws`.*)|\1|
+
+grep -C4 const\ wsUrl "$appvue"
+
+read -rp boobs
+
+#sudo npm run build
+
+sed -i -E '
+  s|^(\s+const protocol.*)|//\1|        # Comment protocol line
+  s|^(\s+const wsUrl = `.*)|// \1|     # Comment wsUrl template line
+  s|^//(\s+const wsUrl = .ws://192.*)|\1|       # Uncomment hardcoded wsUrl line
+' src/App.vue
+
+
+grep -C4 const\ wsUrl "$appvue"
+
+read -rp boobs
+
+
+git commit -m "building production $(date)" -a
+git push
+
+
+exit
+$ ./buildprod
+      }
+
+/* ------------------------- CHANGE THESE TWO LINES BEFORE BUILDING PRODUCITON --------------------------- */
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'                              //
+//      const wsUrl = `${protocol}//${window.location.host}/ws`                                              //
+//        const wsUrl = 'ws://192.168.1.2:8008/ws'
+      console.log('Connecting to WebSocket:', wsUrl)
+      ws.value = new WebSocket(wsUrl)
+

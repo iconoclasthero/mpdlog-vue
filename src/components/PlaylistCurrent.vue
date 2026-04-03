@@ -35,7 +35,7 @@
 </template>
 
 <script>
-import { watch, onMounted, onUnmounted, computed, inject } from 'vue'
+import { watch, watchEffect, onMounted, onUnmounted, computed, inject } from 'vue'
 import { sec2sex } from '@/utils/time.js'
 
 export default {
@@ -50,13 +50,20 @@ export default {
   emits: ['action'],
 
   setup(props, { emit }) {
-    console.log('PlaylistCurrent setup fired', props)
+    const debugRef = inject('componentDebug')
+    let debug = false
+    watchEffect(() => {
+      if (debugRef.value) debug = true
+      else debug = false
+    })
+
+    if ( debug ) console.log('[DEBUG PlaylistCurrent] setup fired', props)
 
     const resultBus = inject('resultBus')
 
     // Group songs by album
     const groupedSongs = computed(() => {
-      console.log('Computing groupedSongs for', props.songs.length, 'songs')
+       if ( debug ) console.log('[DEBUG PlaylistCurrent] Computing groupedSongs for', props.songs.length, 'songs')
       const groups = []
       let lastAlbum = null
       let currentGroup = null
@@ -70,12 +77,12 @@ export default {
         currentGroup.songs.push(song)
       })
 
-      console.log('GroupedSongs computed:', groups)
+       if ( debug ) console.log('[DEBUG PlaylistCurrent] GroupedSongs computed:', groups)
       return groups
     })
 
     const request = () => {
-      console.log('Requesting playlist_current n=', props.playlistCurrentN)
+       if ( debug ) console.log('[DEBUG PlaylistCurrent] Requesting playlist_current n=', props.playlistCurrentN)
       emit('action', {
         type: 'playlist_current',
         n: props.playlistCurrentN
@@ -83,11 +90,11 @@ export default {
     }
 
     onMounted(() => {
-      console.log('PlaylistCurrent mounted')
+       if ( debug ) console.log('[DEBUG PlaylistCurrent] Mounted')
       request()
 
       resultBus?.on('playlistChanged', () => {
-        console.log('playlistChanged → refreshing playlist_current')
+         if ( debug ) console.log('[DEBUG PlaylistCurrent] playlistChanged → refreshing playlist_current')
         request()
       })
     })
@@ -102,7 +109,7 @@ export default {
     watch(
       () => props.currentPosition,
       (newVal, oldVal) => {
-        console.log('currentPosition changed from', oldVal, 'to', newVal)
+         if ( debug ) console.log('[DEBUG PlaylistCurrent] currentPosition changed from', oldVal, 'to', newVal)
         if (newVal !== oldVal) request()
       }
     )
@@ -110,7 +117,7 @@ export default {
     watch(
       () => props.songs,
       (newSongs, oldSongs) => {
-        console.log('songs prop changed', oldSongs?.length, '->', newSongs?.length)
+         if ( debug ) console.log('[DEBUG PlaylistCurrent] songs prop changed', oldSongs?.length, '->', newSongs?.length)
       },
       { deep: true }
     )
@@ -118,14 +125,14 @@ export default {
     watch(
       () => props.songID,
       (newID, oldID) => {
-        console.log('songID changed from', oldID, 'to', newID)
+         if ( debug ) console.log('[DEBUG PlaylistCurrent] songID changed from', oldID, 'to', newID)
         request()  // ask for new playlist_current JSON
       }
     )
 
 
     const playSong = (pos) => {
-      console.log('playSong called with pos', pos)
+       if ( debug ) console.log('[DEBUG PlaylistCurrent] playSong called with pos', pos)
       emit('action', { type: 'playPosition', pos })
     }
 

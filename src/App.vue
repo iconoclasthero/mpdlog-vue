@@ -85,6 +85,7 @@
       :current="current"
       :next="next"
       :linger="linger"
+      :pulse_data="pulse_data"
       :pauseTimer="pauseTimer"
       :pauseTimerRem="pauseTimerRem"
       :pauseTimerDisp="sec2sex(pauseTimerRem)"
@@ -212,6 +213,7 @@ const status = ref(null)
 const current = ref(null)
 const next = ref(null)
 const linger = ref(null)
+const pulse_data = ref(null)
 //    const pause_timer = ref(null)
 const logEntries = ref([])
 const viewMode = ref('default')
@@ -483,7 +485,7 @@ const handleWebSocketMessage = async (event) => {
       resultBus.emit("playlistChanged")
     }
     if (data.system === 'playlist' && data.cmd === 'playlist') {
-      console.log('playlist response received for viewMode:', viewMode.value, data.response)
+      if ( debug ) console.log('[DEBUG App] playlist response received for viewMode:', viewMode.value, data.response)
     }
     if (data.system === 'playlist' && data.cmd === 'playlist') {
       if (!Array.isArray(data.response)) {
@@ -511,6 +513,10 @@ const handleWebSocketMessage = async (event) => {
   }
 
 
+if (data.system === 'pulseaudio' && data.cmd === 'set_volume') {
+  pulse_data.value.volume = data.response
+}
+
   if (data.player && data.current) {
     const last = lastFile.value
     const newFile = data.current.file
@@ -519,10 +525,19 @@ const handleWebSocketMessage = async (event) => {
     current.value = data.current
     next.value = data.next
     linger.value = data.linger
+//  pulse_data.value = data.pulse_data
+    pulse_data.value = { ...data.pulse_data }
+//  if ( debug ) console.log('[TEST pulse_data]', data.pulse_data?.volume)
     pauseTimer.value = data.pause_timer
     if ( debug ) {
       console.log('[DEBUG App] data.pause_timer:', data.pause_timer)
       console.log('[DEBUG App] pauseTimer.value:', pauseTimer.value)
+    }
+    if ( debug ) {
+      console.log('[DEBUG App] pause timer:', {
+        'data.pause_timer': data.pause_timer,
+        'pauseTimer.value': pauseTimer.value
+      })
     }
     updatePauseTimer(data.pause_timer)
 
@@ -595,7 +610,6 @@ const handleWebSocketMessage = async (event) => {
 // Outgoing commands
 // -------------------------------
 const sendCommand = (cmd) => {
-  console.trace('sendCommand called with:', cmd)
   logAndSend(cmd)
   if (cmd !== 'json-status' && !cmd.includes('json-status')) {
     setTimeout(requestStatus, 100)
@@ -627,49 +641,53 @@ const handleAction = (action) => {
     return
   }
 
-  if (action === 'playlist_album') {
-    console.log('Action playlist_album received')
-    viewMode.value = 'album'
-    sendCommand(JSON.stringify({
-      system: 'playlist',
-      cmd: 'playlist',
-      args: 'album'
-    }))
-    return
-  }
+//  if (action === 'playlist_album') {
+//    console.log('Action playlist_album received')
+//    viewMode.value = 'album'
+//    sendCommand(JSON.stringify({
+//      system: 'playlist',
+//      cmd: 'playlist',
+//      args: 'album'
+//    }))
+//    return
+//  }
+//
+//  if (action === 'playlist_current') {
+//    sendCommand(JSON.stringify({
+//      system: 'playlist',
+//      cmd: 'playlist',
+//      args: { current: playlistCurrentN.value ?? playlistCurrentN.value }
+//    }))
+//    viewMode.value = 'current'
+//    return
+//  }
 
-  if (action === 'playlist_current') {
-    sendCommand(JSON.stringify({
-      system: 'playlist',
-      cmd: 'playlist',
-      args: { current: playlistCurrentN.value ?? playlistCurrentN.value }
-    }))
-    viewMode.value = 'current'
-    return
-  }
 
   if (typeof action === 'object') {
 
-    if (typeof action === 'object') {
-      if (action.type === 'pause_timer_on') {
-        const sec = (Number(action.min) || 0) * 60
-        if (sec <= 0) return
+    if (action.type === 'pause_timer_on') {
+      const sec = (Number(action.min) || 0) * 60
+      if (sec <= 0) return
 
-        sendCommand(JSON.stringify({
-          system: 'pause_timer',
-          cmd: 'on',
-          args: sec
-        }))
-        return
-      }
+      sendCommand(JSON.stringify({
+        system: 'pause_timer',
+        cmd: 'on',
+        args: sec
+      }))
+      return
+    }
 
-      if (action.type === 'pause_timer_off') {
-        sendCommand(JSON.stringify({
-          system: 'pause_timer',
-          cmd: 'off'
-        }))
-        return
-      }
+    if (action.type === 'pause_timer_off') {
+      sendCommand(JSON.stringify({
+        system: 'pause_timer',
+        cmd: 'off'
+      }))
+      return
+    }
+
+    if (action.system === 'pulseaudio' && action.cmd === 'set_volume') {
+      sendCommand(JSON.stringify(action))
+      return
     }
 
     if (action.type === 'playlist_album') {

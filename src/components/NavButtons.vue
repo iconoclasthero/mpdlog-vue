@@ -45,26 +45,26 @@
       <div class="button-row d-flex gap-2 align-items-center">
         <form id="controlForm2">
           <h5 style="margin-bottom: 10px;">Pulseaudio Volume:</h5>
-          <button type="button" 
-                  @click="$emit('action', 'down_volume')" 
-                  class="btn btn-info" 
-                  title="Volume down">
-            🔉
-          </button>
-          <button type="button" 
-                  @click="$emit('action', 'up_volume')" 
-                  class="btn btn-info" 
-                  title="Volume up">
-            🔊
-          </button>
-          <button type="button" 
-                  @click="$emit('action', 'mute_volume')" 
-                  class="btn btn-info" 
+          <button type="button"
+                  @click="$emit('action', 'mute_volume')"
+                  class="btn btn-info"
                   title="Mute">
             🔇
           </button>
-          <button class="icon" 
-                  title="Toggle output" 
+          <button type="button"
+                  @click="$emit('action', 'down_volume')"
+                  class="btn btn-info"
+                  title="Volume down">
+            🔉
+          </button>
+          <button type="button"
+                  @click="$emit('action', 'up_volume')"
+                  class="btn btn-info"
+                  title="Volume up">
+            🔊
+          </button>
+          <button class="icon"
+                  title="Toggle output"
                   @click="$emit('action', 'toggle_output')">
             <IcecastIcon />
           </button>
@@ -75,55 +75,55 @@
       <div class="button-row d-flex gap-2 align-items-center">
         <form id="controlForm3">
           <h5 style="margin-bottom: 10px;">Logs/Song Info:</h5>
-          
-          <button v-if="viewMode !== 'long'" 
-                  type="button" 
-                  @click="$emit('action', 'viewLong')" 
-                  class="btn btn-secondary" 
+
+          <button v-if="viewMode !== 'long'"
+                  type="button"
+                  @click="$emit('action', 'viewLong')"
+                  class="btn btn-secondary"
                   title="Long log">
             📜
           </button>
-          <button v-else 
-                  type="button" 
-                  @click="$emit('action', 'viewDefault')" 
-                  class="btn btn-danger" 
+          <button v-else
+                  type="button"
+                  @click="$emit('action', 'viewDefault')"
+                  class="btn btn-danger"
                   title="Return">
             ↩️
           </button>
 
-          <button v-if="viewMode !== 'raw'" 
-                  type="button" 
-                  @click="$emit('change-view', 'raw')" 
-                  class="btn btn-secondary" 
+          <button v-if="viewMode !== 'raw'"
+                  type="button"
+                  @click="$emit('change-view', 'raw')"
+                  class="btn btn-secondary"
                   title="Raw log">
             📝
           </button>
-          <button v-else 
-                  type="button" 
-                  @click="$emit('change-view', 'default')" 
-                  class="btn btn-danger" 
+          <button v-else
+                  type="button"
+                  @click="$emit('change-view', 'default')"
+                  class="btn btn-danger"
                   title="Return">
             ↩️
           </button>
 
-          <button v-if="viewMode !== 'playing'" 
-                  type="button" 
-                  @click="$emit('change-view', 'playing')" 
-                  class="btn btn-secondary" 
+          <button v-if="viewMode !== 'playing'"
+                  type="button"
+                  @click="$emit('change-view', 'playing')"
+                  class="btn btn-secondary"
                   title="Currently playing details">
             🎵💫🎶
           </button>
-          <button v-else 
-                  type="button" 
-                  @click="$emit('change-view', 'default')" 
-                  class="btn btn-danger" 
+          <button v-else
+                  type="button"
+                  @click="$emit('change-view', 'default')"
+                  class="btn btn-danger"
                   title="Return">
             ↩️
           </button>
-          <button v-if="viewMode !== 'search'" 
-                  type="button" 
-                  @click="$emit('change-view', 'search')" 
-                  class="btn btn-secondary" 
+          <button v-if="viewMode !== 'search'"
+                  type="button"
+                  @click="$emit('change-view', 'search')"
+                  class="btn btn-secondary"
                   title="Open search view">
             🔍
           </button>
