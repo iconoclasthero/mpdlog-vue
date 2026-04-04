@@ -52,13 +52,13 @@
             🔇
           </button>
           <button type="button"
-                  @click="$emit('action', 'down_volume')"
+                  @click="$emit('action', 'DOWN_VOLUME')"
                   class="btn btn-info"
                   title="Volume down">
             🔉
           </button>
           <button type="button"
-                  @click="$emit('action', 'up_volume')"
+                  @click="$emit('action', 'UP_VOLUME')"
                   class="btn btn-info"
                   title="Volume up">
             🔊

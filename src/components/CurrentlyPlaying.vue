@@ -93,18 +93,20 @@
         <div v-if="showVol" class="vol-popup">
           <div class="vol-row">
             <button @click="$emit('action', 'mute_volume')">🔇</button>
-            <button @click="$emit('action', 'down_volume')">🔉</button>
-
+            <button @click="$emit('action', 'DOWN_VOLUME')">🔉</button>
+            <button @click="$emit('action', 'down_volume')"><span style="font-size: 0.7em;">❮</span></button>
+            <!-- ❮ / ❯ (U+276E / U+276F) ⯇ ⯈ -->
             <input
               type="range"
               min="0"
               max="100"
               v-model="vol"
               @input="onVolInput"
-              :style="{ accentColor: volColor }"
+              :style="{ accentColor: volColor, marginTop: '4px' }"
             />
 
-            <button @click="$emit('action', 'up_volume')">🔊</button>
+            <button @click="$emit('action', 'up_volume')"><span style="font-size: 0.7em;">❯</span></button>
+            <button @click="$emit('action', 'UP_VOLUME')">🔊</button>
           </div>
         </div>
       </div>
@@ -186,7 +188,9 @@
         <div v-if="showVol" class="vol-popup">
           <div class="vol-row">
             <button @click="$emit('action', 'mute_volume')">🔇</button>
-            <button @click="$emit('action', 'down_volume')">🔉</button>
+            <button @click="$emit('action', 'DOWN_VOLUME')">🔉</button>
+            <button @click="$emit('action', 'down_volume')"><span style="font-size: 0.7em; padding: 0px 8px;">❮</span></button>
+            <!-- ❮ / ❯ (U+276E / U+276F) ⯇ ⯈ -->
 
             <input
               type="range"
@@ -194,10 +198,11 @@
               max="100"
               v-model="vol"
               @input="onVolInput"
-              :style="{ accentColor: volColor }"
+              :style="{ accentColor: volColor, marginTop: '4px' }"
             />
 
-            <button @click="$emit('action', 'up_volume')">🔊</button>
+            <button @click="$emit('action', 'up_volume')" style="padding: 8px 12px;"><span style="font-size: 0.7em;">❯</span></button>
+            <button @click="$emit('action', 'UP_VOLUME')">🔊</button>
           </div>
         </div>
       </div>
@@ -346,7 +351,7 @@ const onClickOutside = (e) => {
 }
 
 const volColor = computed(() => {
-  if (vol.value < 40) return 'limegreen'
+  if (vol.value < 55) return 'limegreen'
   if (vol.value < 75) return 'gold'
   return 'red'
 })
@@ -359,7 +364,6 @@ const sendVol = (v) => {
   })
 }
 
-
 const onVolInput = (e) => {
   const v = Number(e.target.value)
 
@@ -369,7 +373,6 @@ const onVolInput = (e) => {
     sendVol(v)
   }, 70)
 }
-
 /*--------------------------*/
 
 
@@ -455,8 +458,6 @@ if ( debug ) {
   console.log('[DEBUG CurrentlyPlaying] props.pauseTimerDisp', props.pauseTimerDisp)
   console.log('[DEBUG CurrentlyPlaying] props.pulse_data', props.pulse_data.mute)
 }
-
-
 
 watch(
   () => props.status?.player?.elapsed,
@@ -551,6 +552,28 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+button {
+  background-color: #222;  /* dark background */
+  color: #fff;             /* light text/emoji */
+  border: none;            /* remove default border */
+  border-radius: 22px;      /* slightly rounded corners */
+  padding: 0px 3px;        /* some padding */
+  font-size: 1.2em;        /* bigger for emojis */
+  cursor: pointer;         /* pointer on hover */
+}
+
+button:hover {
+  background-color: #333;  /* slightly lighter on hover */
+}
+
+.album.mobile button {
+  padding: 8px 5px; /* or whatever you want */
+}
+
+button.mobile {
+ padding: 8px 8px;
+}
+
 .repeat-toggle.active {
   color: #22c55e;
 }
@@ -560,8 +583,6 @@ onUnmounted(() => {
   padding: 8px;
   border-radius: 6px;
 }
-
-
 .vol-row {
   display: flex;
   align-items: center;
