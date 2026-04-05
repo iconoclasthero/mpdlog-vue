@@ -25,7 +25,7 @@
         <audio controls preload="none" :src="`/library/music/${entry.url}`"></audio>
         <br>
         <br>
-        <a href="#" style="color: red;text-decoration: bold;" @click.prevent="$emit('action', { type: 'ignore-log-entry', payload: entry.file })" title="Ignore log entry">Ignore this song:</a>
+        <a href="#" style="color: red;" @click.prevent="$emit('action', { type: 'ignore-log-entry', payload: entry.file })" title="Ignore log entry"><strong>Ignore this song:</strong></a>
       </details>
 
 <!--      <strong class="song"> -->
