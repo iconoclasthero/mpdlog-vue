@@ -14,14 +14,7 @@
               {{ entry.action === 'skipped-ignored'
                   ? 'skipped and ignored'
                   : entry.action }}
-
           </strong>
-<!--        <span v-if="entry.notes" class="notes-info"> -->
-<!--            <span v-if="entry.notes && entry.notes !== 'Found via relative path lookup.'" class="notes-info">
-            &nbsp; &nbsp; <br>
-            <strong class="timestamp"><em>{{ entry.notes }}</em></strong>
-          </span>
--->
         <span v-if="entry.notes && entry.notes !== 'Found via relative path lookup.'" class="timestampbubble">🗩</span>
         </summary>
         <!-- notes now inside details dropdown -->
@@ -30,7 +23,9 @@
         </span>
         <br>
         <audio controls preload="none" :src="`/library/music/${entry.url}`"></audio>
-        <br><br>
+        <br>
+        <br>
+        <a href="#" style="color: red;" @click.prevent="$emit('action', { type: 'ignore-log-entry', payload: entry.file })" title="Ignore log entry">Ignore this song:</a>
       </details>
 
 <!--      <strong class="song"> -->
@@ -42,17 +37,17 @@
             'skipped-ignored': entry.action === 'skipped-ignored'
           }"
         >
-        <a class="hidden-link" 
-           :href="`https://musicbrainz.org/mbid/${entry.audio.musicbrainz_releasetrackid}`" 
+        <a class="hidden-link"
+           :href="`https://musicbrainz.org/mbid/${entry.audio.musicbrainz_releasetrackid}`"
            target="_blank">
-          ({{ formatDisc(entry.audio.disc) }}-{{ formatTrack(entry.audio.track) }}) 
+          ({{ formatDisc(entry.audio.disc) }}-{{ formatTrack(entry.audio.track) }})
           {{ entry.audio.title }} - {{ formatDuration(entry.audio.duration) }}
         </a>
       </strong>
       <br>
 
       <strong class="artist">
-        <a :href="`https://musicbrainz.org/artist/${entry.audio.musicbrainz_artistid}`" 
+        <a :href="`https://musicbrainz.org/artist/${entry.audio.musicbrainz_artistid}`"
            target="_blank">
           {{ entry.audio.artist }}
         </a>
@@ -60,7 +55,7 @@
       <br>
 
       <strong class="album">
-        <a :href="`https://musicbrainz.org/release/${entry.audio.musicbrainz_albumid}`" 
+        <a :href="`https://musicbrainz.org/release/${entry.audio.musicbrainz_albumid}`"
            target="_blank">
           {{ formatAlbum(entry.audio.album, entry.audio.year) }}
         </a>
@@ -92,6 +87,7 @@ import { sec2sex } from '@/utils/time.js'
 
 export default {
   name: 'LogSection',
+  emits: ['action'],
   props: {
     entries: Array,
     viewMode: String,

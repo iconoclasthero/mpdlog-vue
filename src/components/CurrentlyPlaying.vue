@@ -234,7 +234,8 @@
       </a>
 
       <!-- Linger mobile -->
-      <a href="#" @click.prevent="$emit('action', 'linger_next')">
+<!--      <a href="#" @click.prevent="$emit('action', 'linger_next')"> -->
+      <a href="#" @click.prevent="$emit('toggleControlPanel', 'linger')">
         {{ linger?.lingerxy ? 'lingerXY:' : 'linger:' }}</a>&nbsp;
       <template v-if="!linger">
         <span class="smallemoji mobile">❌</span>
@@ -583,10 +584,6 @@ button.mobile {
   background: #222;
   padding: 10px;
   border-radius: 22px;
-}
-
-.vol-popup.mobile {
-  padding: 14px;
 }
 
 .vol-row {

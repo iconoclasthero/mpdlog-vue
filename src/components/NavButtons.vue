@@ -33,8 +33,8 @@
             ❌ 🔀
           </button>
           <button type="button" 
-                  @click="$emit('action', 'ignore')" 
-                  class="btn btn-outline-danger" 
+                  @click="$emit('action', 'ignore')"
+                  class="btn btn-outline-danger"
                   title="Ignore this item">
             🚫
           </button>

@@ -22,7 +22,7 @@ sed -i -E '
 
 grep -A3 'CHANGE THESE TWO' "$appvue"
 printf \\n
-read -rp "Press enter to run npm buil"
+read -rp "Press enter to run npm build"
 
 # -----------------------
 # Build & commit

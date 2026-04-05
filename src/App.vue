@@ -119,6 +119,7 @@
       :entries="logEntries"
       :view-mode="viewMode"
       :showPath="showPath"
+      @action="handleAction"
     />
 
     <PlaylistAlbum
@@ -648,29 +649,18 @@ const handleAction = (action) => {
     return
   }
 
-//  if (action === 'playlist_album') {
-//    console.log('Action playlist_album received')
-//    viewMode.value = 'album'
-//    sendCommand(JSON.stringify({
-//      system: 'playlist',
-//      cmd: 'playlist',
-//      args: 'album'
-//    }))
-//    return
-//  }
-//
-//  if (action === 'playlist_current') {
-//    sendCommand(JSON.stringify({
-//      system: 'playlist',
-//      cmd: 'playlist',
-//      args: { current: playlistCurrentN.value ?? playlistCurrentN.value }
-//    }))
-//    viewMode.value = 'current'
-//    return
-//  }
-
-
   if (typeof action === 'object') {
+
+    if (action.type === 'ignore-log-entry') {
+      console.log('Ignoring log entry:', action.payload)
+      sendCommand(JSON.stringify({
+        system: 'mpd',
+        cmd: 'ignore',
+        args: action.payload
+      }))
+      return
+    }
+
 
     if (action.type === 'pause_timer_on') {
       const sec = (Number(action.min) || 0) * 60
