@@ -182,10 +182,10 @@
     <span class="album mobile">
       <div ref="volWrapMobile" style="display:inline-block; position:relative;">
         <a href="#" @click.prevent="toggleVol">
-          vol:</a>&nbsp;<a href="#" @click.prevent="$emit('action', 'mute_volume')" :class="{ 'strikethrough-red': pulse_data.mute }">
+          volume:</a>&nbsp;<a href="#" @click.prevent="$emit('action', 'mute_volume')" :class="{ 'strikethrough-red': pulse_data.mute }">
           {{ pulse_data.volume }}%</a>&nbsp;
 
-        <div v-if="showVol" class="vol-popup">
+        <div v-if="showVol" class="vol-popup" style="padding: 18px 6px;">
           <div class="vol-row">
             <button @click="$emit('action', 'mute_volume')">🔇</button>
             <button @click="$emit('action', 'DOWN_VOLUME')">🔉</button>
@@ -577,12 +577,18 @@ button.mobile {
 .repeat-toggle.active {
   color: #22c55e;
 }
+
 .vol-popup {
   position: absolute;
   background: #222;
-  padding: 8px;
-  border-radius: 6px;
+  padding: 10px;
+  border-radius: 22px;
 }
+
+.vol-popup.mobile {
+  padding: 14px;
+}
+
 .vol-row {
   display: flex;
   align-items: center;
