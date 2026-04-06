@@ -44,8 +44,6 @@
       background-color: #0dcaf0;
       background-color: #007bff;
       background: #222;
-
-
 -->
 
 
@@ -163,20 +161,26 @@
     <!-- Back-to-Top Button -->
     <BackToTop :show="showBackTop" />
 
-<ControlPanel
-  :visible="showPanel"
-  :linger="linger"
-  :playlistCurrentN="playlistCurrentN"
-  :activeTab="activeTab"
-  :pauseTimer="pauseTimer"
-  :pauseTimerMin="pauseTimerRem * 60"
-  @update:pauseTimerMin="pauseTimerMin"
-  @update:playlistCurrentN="val => playlistCurrentN = val"
-  @update-current-window="setPlaylistCurrentN"
-  @action="handleAction"
-  @cmd="sendWebSocketCommand"
-  @close="showPanel = false"
-/>
+    <ControlPanel
+      :visible="showPanel"
+      :linger="linger"
+      :playlistCurrentN="playlistCurrentN"
+      :activeTab="activeTab"
+      :pauseTimer="pauseTimer"
+      :pauseTimerMin="pauseTimerRem * 60"
+      @update:pauseTimerMin="pauseTimerMin"
+      @update:playlistCurrentN="val => playlistCurrentN = val"
+      @update-current-window="setPlaylistCurrentN"
+      @action="handleAction"
+      @cmd="sendWebSocketCommand"
+      @close="showPanel = false"
+    />
+  </div>
+
+  <div class="notification-container">
+    <div v-for="n in notifications" :key="n.id" class="notification">
+      {{ n.msg }}
+    </div>
   </div>
 
 </template>
@@ -190,7 +194,7 @@
 //}
 
 
-import { ref, onMounted, onUnmounted, provide, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, provide, computed, watch, } from 'vue'
 import { sec2sex } from '@/utils/time.js'
 import CurrentlyPlaying from './components/CurrentlyPlaying.vue'
 import AlbumArt from './components/AlbumArt.vue'
@@ -513,6 +517,11 @@ const handleWebSocketMessage = async (event) => {
     }
   }
 
+  if (data.system === 'mpd' && data.cmd === 'ignore') {
+    if (data.response !== 'error' ) addNotification(`Ignored: ${data.response}`)
+    else addNotification(`Ignored: ${data.error}`)
+    return
+  }
 
   if (data.system === 'pulseaudio' && data.cmd === 'set_volume') {
     pulse_data.value.volume = data.response
@@ -905,6 +914,21 @@ const handleKeydown = (ev) => {
 
 }
 
+/* ----------- Notifications --------------- */
+
+const notifications = ref([])
+
+const addNotification = (msg, duration = 8000) => {
+  console.log(msg)
+  const id = Date.now()
+  notifications.value.push({ id, msg })
+  setTimeout(() => {
+    const idx = notifications.value.findIndex(n => n.id === id)
+    if (idx !== -1) notifications.value.splice(idx, 1)
+  }, duration)
+}
+
+/* ----------- Notifications --------------- */
 
 const statusLine = document.querySelector('.album.desktop')
 if (statusLine) {
@@ -966,4 +990,21 @@ onUnmounted(() => {
   right: 12px;
 }
 
+.notification-container {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  width: 500px;
+  z-index: 1000;
+}
+
+.notification {
+  background: #ff4444;
+  color: white;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  font-weight: bold;
+}
 </style>
