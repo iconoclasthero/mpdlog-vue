@@ -63,10 +63,12 @@
                   title="Volume up">
             🔊
           </button>
-          <button class="icon"
+          <button type="button"
+                  class="btn btn-info"
+                  style="padding:2px 2px"
                   title="Toggle output"
                   @click="$emit('action', 'toggle_output')">
-            <IcecastIcon />
+            <IcecastIcon style="width:2.0em;height:2.0em;" />
           </button>
         </form>
       </div>
@@ -127,10 +129,10 @@
                   title="Open search view">
             🔍
           </button>
-          <button v-else 
-                  type="button" 
-                  @click="$emit('change-view', 'viewdefault')" 
-                  class="btn btn-danger" 
+          <button v-else
+                  type="button"
+                  @click="$emit('change-view', 'viewdefault')"
+                  class="btn btn-danger"
                   title="Return">
             ↩️
           </button>

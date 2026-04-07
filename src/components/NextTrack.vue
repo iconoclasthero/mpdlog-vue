@@ -13,8 +13,8 @@
     </span>
     <br>
     <strong class="song"><em>
-      <a class="hidden-link" 
-         :href="`https://musicbrainz.org/mbid/${next.musicbrainz_releasetrackid}`" 
+      <a class="hidden-link"
+         :href="`https://musicbrainz.org/mbid/${next.musicbrainz_releasetrackid}`"
          target="_blank">
         ({{ disc }}-{{ track }}) {{ next.title }} - {{ duration }}
       </a>
