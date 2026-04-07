@@ -10,9 +10,10 @@
       <a class="pauseicon" href="#" @click.prevent="$emit('action', 'toggle_playback')">
         <span :class="altClass">{{ toggleIcon }}</span>
       </a>&nbsp;
+        <a class="skipend" href="#" @click.prevent="$emit('action', 'prev_track')">▮◀ </a> &nbsp; &nbsp;  &nbsp; <!-- &nbsp; &nbsp; -->
         <a :class="colorClass" href="#" @click.prevent="$emit('action', { type: 'playlist_current', n: null })"
          title="Playlist|current song">#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}</a> &nbsp;
-      <a class="skipend" href="#" @click.prevent="$emit('action', 'next_track')">▶▮</a>
+        <a class="skipend" href="#" @click.prevent="$emit('action', 'next_track')">▶▮</a>
     </span>
 
     <!-- Mobile version -->
@@ -28,8 +29,9 @@
       <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" title="Playlist|current song">
         &nbsp#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}
       </a>
-      <a href="#" @click.prevent="$emit('action', 'next_track')" style="position:absolute">&nbsp; ⏭
-      </a>
+      <a href="#" @click.prevent="$emit('action', 'prev_track')" style="position:absolute">&nbsp; ⏮ &nbsp;</a>
+      &nbsp; &nbsp; &nbsp;
+      <a href="#" @click.prevent="$emit('action', 'next_track')" style="position:absolute">&nbsp; ⏭ &nbsp;</a>
     </span>
     <br>
 

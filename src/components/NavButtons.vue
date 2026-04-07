@@ -131,7 +131,7 @@
           </button>
           <button v-else
                   type="button"
-                  @click="$emit('change-view', 'viewdefault')"
+                  @click="$emit('change-view', 'default')"
                   class="btn btn-danger"
                   title="Return">
             ↩️
