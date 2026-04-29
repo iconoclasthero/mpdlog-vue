@@ -1,6 +1,7 @@
 <template>
   <div>
     <!-- Header -->
+
 <!--    <a class="hidden-link" href="http://iconoclasthero.com:8000">
       <img src="/android-icon-96x96.png" style="display: inline; vertical-align: top;">
     </a>
@@ -20,7 +21,8 @@
       img-src="/android-icon-96x96.png"
       @seek="seekTo"
       @action="handleAction"
-  />
+    />
+
 <!--       :elapsed="status.player.elapsed" -->
 <!--      @refresh-status="handleAction('json_status')" -->
 
@@ -728,33 +730,34 @@ const handleAction = (action) => {
   }
 
   const map = {
-    toggle_playback: JSON.stringify({ system: 'player', cmd: 'togglestate' }),
-    resume_playback: JSON.stringify({ system: 'player', cmd: 'resume' }),
-    pause_playback:  JSON.stringify({ system: 'player', cmd: 'pause'}),
-    prev_track:      JSON.stringify({ system:'mpd', cmd:'previous' }),
-    next_track:      JSON.stringify({ system:'mpd', cmd:'next' }),
-    reset_track:     JSON.stringify({ system:'mpd', cmd:'restart' }),
-    enable_random:   JSON.stringify({ system:'mpd', cmd:'random', args:'1' }),
-    disable_random:  JSON.stringify({ system:'mpd', cmd:'random', args:'0' }),
-    toggle_random:   JSON.stringify({ system:'mpd', cmd:'togglerandom' }),
-    enable_consume:  JSON.stringify({ system:'mpd', cmd:'consume', args:'1' }),
-    disable_consume: JSON.stringify({ system:'mpd', cmd:'consume', args:'0' }),
-    toggle_consume:  JSON.stringify({ system:'mpd', cmd:'toggleconsume' }),
-    toggle_single:   JSON.stringify({ system:'mpd', cmd:'togglesingle' }),
-    toggle_repeat:   JSON.stringify({ system:'mpd', cmd:'togglerepeat' }),
-    ignore:          JSON.stringify({ system:'mpd', cmd:'ignore' }),
-    DOWN_VOLUME:     JSON.stringify({ system:'pulseaudio', cmd:'set_volume', args:"-5" }),
-    down_volume:     JSON.stringify({ system:'pulseaudio', cmd:'set_volume', args:"-1" }),
-    up_volume:       JSON.stringify({ system:'pulseaudio', cmd:'set_volume', args:"+1" }),
-    UP_VOLUME:       JSON.stringify({ system:'pulseaudio', cmd:'set_volume', args:"+5" }),
-    mute_volume:     JSON.stringify({ system:'pulseaudio', cmd:'mute_volume' }),
+    toggle_playback:  JSON.stringify({ system:'player',     cmd: 'togglestate'          }),
+    resume_playback:  JSON.stringify({ system:'player',     cmd: 'resume'               }),
+    pause_playback:   JSON.stringify({ system:'player',     cmd: 'pause'                }),
+    prev_track:       JSON.stringify({ system:'mpd',        cmd:'previous'              }),
+    next_track:       JSON.stringify({ system:'mpd',        cmd:'next'                  }),
+    reset_track:      JSON.stringify({ system:'mpd',        cmd:'restart'               }),
+    enable_random:    JSON.stringify({ system:'mpd',        cmd:'random',     args:'1'  }),
+    disable_random:   JSON.stringify({ system:'mpd',        cmd:'random',     args:'0'  }),
+    toggle_random:    JSON.stringify({ system:'mpd',        cmd:'togglerandom'          }),
+    enable_consume:   JSON.stringify({ system:'mpd',        cmd:'consume',    args:'1'  }),
+    disable_consume:  JSON.stringify({ system:'mpd',        cmd:'consume',    args:'0'  }),
+    toggle_consume:   JSON.stringify({ system:'mpd',        cmd:'toggleconsume'         }),
+    toggle_single:    JSON.stringify({ system:'mpd',        cmd:'togglesingle'          }),
+    toggle_repeat:    JSON.stringify({ system:'mpd',        cmd:'togglerepeat'          }),
+    ignore:           JSON.stringify({ system:'mpd',        cmd:'ignore'                }),
+    start_mpdzmq:     JSON.stringify({ system:'mpd',        cmd:'start_mpdzmq'          }),
+    DOWN_VOLUME:      JSON.stringify({ system:'pulseaudio', cmd:'set_volume', args:"-5" }),
+    down_volume:      JSON.stringify({ system:'pulseaudio', cmd:'set_volume', args:"-1" }),
+    up_volume:        JSON.stringify({ system:'pulseaudio', cmd:'set_volume', args:"+1" }),
+    UP_VOLUME:        JSON.stringify({ system:'pulseaudio', cmd:'set_volume', args:"+5" }),
+    mute_volume:      JSON.stringify({ system:'pulseaudio', cmd:'mute_volume' }),
 //      pause_timer_on:  JSON.stringify({ system:'pause_timer', cmd:'on', args:'pauseTimerDur' }),
 //      pause_timer_off: JSON.stringify({ system:'pause_timer', cmd:'off' }),
-    linger_next:     JSON.stringify({ system:'linger', cmd:'next' }),
-    linger_start: 'linger-start',
-    linger_toggle: 'toggle',
-    toggle_output: 'toggle-output',
-    json_status: 'json-status'
+    linger_next:      JSON.stringify({ system:'linger', cmd:'next' }),
+    linger_start:     'linger-start',
+    linger_toggle:    'toggle',
+    toggle_output:    'toggle-output',
+    json_status:      'json-status'
   }
   if (map[action]) {
     if ( debug ) console.log('[DEBUG App] sending:', map[action])

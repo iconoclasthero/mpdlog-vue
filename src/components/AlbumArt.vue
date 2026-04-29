@@ -110,10 +110,16 @@ const layout = inject('layout', { narrow: false })
 //const debugRef = inject('debug') || ref(false) // gets the reactive ref
 const debugRef = inject('componentDebug')
 
-let debug = false
+//let debug = false
+//watchEffect(() => {
+//  if (debugRef.value) debug = true
+//  else debug = false
+//})
+const debug = true
+
+
 watchEffect(() => {
-  if (debugRef.value) debug = true
-  else debug = false
+  console.log('[PROPS LIVE]', props.artist, props.mbArtistID)
 })
 
 if ( debug ) console.log('[DEBUG AlbumArt] ( • )( • )----ԅ(‾⌣‾ԅ)')
@@ -157,9 +163,13 @@ onMounted(() => {
 
 // Grateful Dead fallback
 watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
-  if ((props.artist && props.artist.includes('Grateful Dead')) ||
-      props.mbArtistID === '6faa7ca7-0d99-4a5e-bfa6-1fd5037520c6') {
+console.log('[TEST] outside if', { artist, mbid, isDead: isDead.value })
+//  if ((props.artist && props.artist.includes('Grateful Dead')) ||
+//      props.mbArtistID === '6faa7ca7-0d99-4a5e-bfa6-1fd5037520c6') {
+  if ((artist && artist.includes('Grateful Dead')) ||
+      mbid === '6faa7ca7-0d99-4a5e-bfa6-1fd5037520c6') {
     isDead.value = true
+console.log('[TEST] inside if', { artist, mbid, isDead: isDead.value })
     const modules = import.meta.glob('./dead/*.svg', { eager: true })
     const paths = Object.values(modules).map(m => m.default)
     if (paths.length > 0) deadSVGUrl.value = paths[Math.floor(Math.random() * paths.length)]

@@ -70,6 +70,13 @@
                   @click="$emit('action', 'toggle_output')">
             <IcecastIcon style="width:2.0em;height:2.0em;" />
           </button>
+          <button type="button"
+                  class="btn btn-info"
+                  style="padding:6px 6px; color:firebrick"
+                  title="Start mpd zmq"
+                  @click="$emit('action', 'mpdzmq')">
+            <ZMQicon style="width:1.4em;height:1.4em;" />
+          </button>
         </form>
       </div>
 
@@ -151,11 +158,13 @@
 
 <script>
 import IcecastIcon from './IcecastIcon.vue'
+import ZMQicon from './ZMQicon.vue'
 
 export default {
   name: 'NavButtons',
   components: {
-    IcecastIcon
+    IcecastIcon,
+    ZMQicon
   },
   props: {
     viewMode: String,
