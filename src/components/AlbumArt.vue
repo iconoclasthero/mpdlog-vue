@@ -163,6 +163,7 @@ onMounted(() => {
 
 // Grateful Dead fallback
 watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
+  isDead.value = false
 console.log('[TEST] outside if', { artist, mbid, isDead: isDead.value })
 //  if ((props.artist && props.artist.includes('Grateful Dead')) ||
 //      props.mbArtistID === '6faa7ca7-0d99-4a5e-bfa6-1fd5037520c6') {
