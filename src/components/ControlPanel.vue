@@ -271,6 +271,7 @@
   <button @click="addorset(30)">30</button>
   <button @click="addorset(60)">60</button>
   <button @click="addorset(90)">90</button>
+  <button @click="pauseToEnd">song</button>
 </div>
 
       </div>
@@ -376,6 +377,17 @@ watch(() => props.pauseTimer, (t) => {
     pauseTimerDurMin.value = Math.floor(t.duration / 60)
   }
 }, { immediate: true })
+
+// OBJECT form of pauseToEnd
+//const pauseToEnd = () => {
+//  emit('action', {
+//    type: 'pause_timer_end'
+//  })
+//}
+
+const pauseToEnd = () => {
+  emit('action', 'pause_timer_end')
+}
 
 const pauseEnabled = computed({
   get: () => !!props.pauseTimer?.active,
