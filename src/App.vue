@@ -727,6 +727,14 @@ const handleAction = (action) => {
       }))
       return
     }
+
+    if (action.type === 'open_pause_timer') {
+      console.log('action.type: open_pause_timer')
+      activeTab.value = 'timer'
+      showPanel.value = true
+      return
+    }
+
   }
 
   const map = {

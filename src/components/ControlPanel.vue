@@ -335,7 +335,8 @@ const emit = defineEmits([
 //  'update:pauseTimer'
 ])
 
-const tab = ref('linger')
+//const tab = ref('linger')
+const tab = ref(props.activeTab || 'linger')
 const x = ref(40)
 const y = ref(80)
 const dragging = ref(false)
@@ -355,6 +356,12 @@ const localTimerRem = ref(props.pauseTimer?.remaining || 0)
 /* NEW: pause timer state (UI only) */
 //const pauseTimerDurMin = ref(props.pauseTimerDurMin || 0)
 const pauseTimerDurMin = ref(props.pauseTimerMin || 0)
+
+
+watch(() => props.activeTab, (t) => {
+  if (t) tab.value = t
+}, { immediate: true })
+
 
 //watch(() => props.pauseTimerDurMin, (v) => {
 //  if (v != null) {

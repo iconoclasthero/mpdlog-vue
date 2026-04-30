@@ -40,7 +40,8 @@
       <a href="#" @click.prevent="$emit('action', 'reset_track')" title="Restart track">
         elapsed <span id="elapsed_display">{{ elapsedDisplay }}</span>/<span id="total_display">{{ totalDisplay }}</span>
         (<span id="percent_display">{{ percentDisplay }}</span>%)
-      </a>
+      </a> &nbsp;<a href="#" @click.prevent="console.log('CLICKED ⏲') || $emit('action', { type: 'open_pause_timer' })" title="Pause timer">⏲</a>
+
     </span>
     <br>
 
