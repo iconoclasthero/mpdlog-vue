@@ -110,12 +110,11 @@ const layout = inject('layout', { narrow: false })
 //const debugRef = inject('debug') || ref(false) // gets the reactive ref
 const debugRef = inject('componentDebug')
 
-//let debug = false
-//watchEffect(() => {
-//  if (debugRef.value) debug = true
-//  else debug = false
-//})
-const debug = true
+let debug = false
+watchEffect(() => {
+  if (debugRef.value) debug = true
+  else debug = false
+})
 
 if ( debug ) {
   watchEffect(() => {
