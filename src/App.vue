@@ -164,6 +164,7 @@
     <BackToTop :show="showBackTop" />
 
     <ControlPanel
+      :status="status"
       :visible="showPanel"
       :linger="linger"
       :playlistCurrentN="playlistCurrentN"

@@ -315,6 +315,7 @@ import { ref, computed, watch, inject } from 'vue'
 const layout = inject('layout')
 
 const props = defineProps({
+  status: Object,
   visible: Boolean,
   linger: Object,
   playlistCurrentN: Number,
@@ -576,6 +577,13 @@ function toggleBlocklimit() {
   console.log('emit action json_status')
   emit('action', 'json_status')
 }
+
+watch(() => props.status?.player?.state, (s) => {
+  if (s === 'play') {
+    showResumeModal.value = false
+  }
+})
+
 
 watch(() => props.linger?.blocklimit, (val) => {
   if (typeof val === 'number') {
