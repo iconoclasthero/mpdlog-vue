@@ -11,7 +11,7 @@
       :style="{ height: 'auto', maxWidth: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }"
     >
 -->
-
+<div v-if="albumArtData" class="art-block">
     <img
       v-if="albumArtData"
       :src="albumArtData"
@@ -28,9 +28,8 @@
         class="fix-art-button"
         @click="$emit('action', 'fix_art')"
         title="Mark album art for fixing"
-      >⚠</a><hr v-if="albumArtData" />
-
-
+      >⚠</a>
+</div>
     <!-- Placeholder / fallback -->
 
     <div v-else-if="isLoading" class="musicdna-placeholder"
@@ -51,7 +50,8 @@
          @click="$emit('refreshArt')"
          :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
   </div>
-  <hr v-if="!albumArtData" />
+<!--  <hr v-if="!albumArtData" /> -->
+<hr />
 </template>
 
 <script setup>
@@ -213,5 +213,46 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   margin: 5px 0;
 }
 
+.art-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+
+.art-block {
+  position: relative;
+  display: block;
+  margin-bottom: 8px; /* THIS replaces hr spacing */
+}
+
+.art-block {
+  position: relative;
+  display: inline-block; /* key change */
+}
+
+.art-img {
+  display: block;
+}
+.art-img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+}
+
+.fix-art-button {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 10;
+}
+
+.fix-art-button {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+
+  z-index: 10;
+}
 
 </style>
