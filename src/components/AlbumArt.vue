@@ -1,31 +1,14 @@
 <template>
   <div class="album-art-container">
     <!-- Desktop: unchanged -->
+
 <!--
     <img
-      v-if="albumArtData && !layout.narrow.value"
+      v-if="albumArtData"
       :src="albumArtData"
       alt="Album Art"
       @click="$emit('refreshArt')"
-      :style="{ maxWidth: deskWidth + 'px', height: 'auto' }"
-    >
-
-    <img
-      v-if="albumArtData && !layout.narrow.value"
-      :src="albumArtData"
-      @click="handleClick"
-      alt="Album Art"
-      :style="{ maxWidth: deskWidth + 'px', height: 'auto' }"
-    >
-
-    <!-- Mobile: only show if layout.narrow -->
-<!--
-    <img
-      v-else-if="albumArtData && layout.narrow.value"
-      :src="albumArtData"
-      alt="Album Art"
-      @click="$emit('refreshArt')"
-      :style="{ maxWidth: mobileMaxWidth, height: 'auto' }"
+      :style="{ height: 'auto', maxWidth: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }"
     >
 -->
 
@@ -34,29 +17,21 @@
       :src="albumArtData"
       alt="Album Art"
       @click="$emit('refreshArt')"
-      :style="{ height: 'auto', maxWidth: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }"
+      :style="imgStyle"
+      @mouseenter="hovered = true"
+      @mouseleave="hovered = false"
+      @load="checkSize"
     >
 
+      <a href="#"
+        v-if="albumArtData"
+        class="fix-art-button"
+        @click="$emit('action', 'fix_art')"
+        title="Mark album art for fixing"
+      >⚠</a><hr v-if="albumArtData" />
+
+
     <!-- Placeholder / fallback -->
-<!--
-    <div v-else-if="isLoading" class="musicdna-placeholder"
-         @click="$emit('refreshArt')"
-         :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
-      <p>Loading album art...</p>
-    </div>
-
-    <div v-else-if="isDead" class="musicdna-placeholder"
-         @click="$emit('refreshArt')"
-         :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
-      <img :src="deadSVGUrl" alt="Grateful Dead SVG" style="width: 100%; height: auto; filter: none !important;" />
-    </div>
-
-    <div v-else class="musicdna-placeholder"
-         @click="$emit('refreshArt')"
-         :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
-      <img src="../../assets/musicdna.svg" alt="MusicDNA" style="width: 100%; height: auto; fill: #000000 !important;" />
-    </div>
--->
 
     <div v-else-if="isLoading" class="musicdna-placeholder"
          @click="$emit('refreshArt')"
@@ -76,19 +51,30 @@
          @click="$emit('refreshArt')"
          :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
   </div>
-  <hr />
+  <hr v-if="!albumArtData" />
 </template>
 
 <script setup>
-import { ref, onMounted, inject, nextTick, watch, watchEffect } from 'vue'
+import { ref, onMounted, inject, nextTick, watch, watchEffect, computed } from 'vue'
 
-const emit = defineEmits(['refreshArt'])
+const emit = defineEmits(['refreshArt', 'action'])
+
+const hovered = ref(false)
 
 const props = defineProps({
   albumArtData: String,
   artist: String,
   mbArtistID: String
 })
+
+const imgStyle = computed(() => ({
+  height: 'auto',
+  maxWidth: hovered.value
+    ? undefined
+    : (layout.narrow.value ? mobileMaxWidth.value : deskWidth.value + 'px')
+}))
+
+  console.log('imgStyle', imgStyle)
 
 const handleClick = (ev) => {
   if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
@@ -103,6 +89,26 @@ const handleClick = (ev) => {
   }
 }
 
+const checkSize = (ev) => {
+  const img = ev.target
+
+  console.log(
+    '[ART]',
+    img.naturalWidth,
+    'x',
+    img.naturalHeight
+  )
+
+  if (
+    img.naturalWidth <= 500 ||
+    img.naturalHeight <= 500
+  ) {
+    console.log('[ART] below threshold')
+    emit('action', 'fix_art')
+//    emit('refreshArt')
+  }
+}
+
 
 // Only use layout for mobile
 const layout = inject('layout', { narrow: false })
@@ -114,6 +120,10 @@ let debug = false
 watchEffect(() => {
   if (debugRef.value) debug = true
   else debug = false
+})
+
+watchEffect(() => {
+  console.log('hovered:', hovered.value)
 })
 
 if ( debug ) {
@@ -202,4 +212,6 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   padding: 10px;
   margin: 5px 0;
 }
+
+
 </style>
