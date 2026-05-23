@@ -12,6 +12,7 @@
     >
 -->
 <div v-if="albumArtData" class="art-block">
+<!--
     <img
       v-if="albumArtData"
       :src="albumArtData"
@@ -22,13 +23,32 @@
       @mouseleave="hovered = false"
       @load="checkSize"
     >
+-->
+    <img
+      v-if="albumArtData"
+      :src="albumArtData"
+      alt="Album Art"
+      @click="handleImageClick"
+      :style="imgStyle"
+      @load="checkSize"
+    >
 
-      <a href="#"
-        v-if="albumArtData"
-        class="fix-art-button"
-        @click="$emit('action', 'fix_art')"
-        title="Mark album art for fixing"
-      >⚠</a>
+    <a
+      v-if="albumArtData"
+      class="cover-search-button"
+      :href="coverSearchURL"
+      target="_blank"
+      title="Search cover art"
+    >
+      🔍
+    </a>
+
+     <a href="#"
+       v-if="albumArtData"
+       class="fix-art-button"
+       @click="$emit('action', 'fix_art')"
+       title="Mark album art for fixing"
+     >⚠</a>
 </div>
     <!-- Placeholder / fallback -->
 
@@ -59,22 +79,42 @@ import { ref, onMounted, inject, nextTick, watch, watchEffect, computed } from '
 
 const emit = defineEmits(['refreshArt', 'action'])
 
-const hovered = ref(false)
+// const hovered = ref(false)
 
 const props = defineProps({
   albumArtData: String,
   artist: String,
-  mbArtistID: String
+  mbArtistID: String,
+  current: Object
 })
+
+//const imgStyle = computed(() => ({
+//  height: 'auto',
+//  maxWidth: hovered.value
+//    ? undefined
+//    : (layout.narrow.value ? mobileMaxWidth.value : deskWidth.value + 'px')
+//}))
+
+const zoomed = ref(false)
 
 const imgStyle = computed(() => ({
   height: 'auto',
-  maxWidth: hovered.value
+  maxWidth: zoomed.value
     ? undefined
     : (layout.narrow.value ? mobileMaxWidth.value : deskWidth.value + 'px')
 }))
 
-  console.log('imgStyle', imgStyle)
+console.log('imgStyle', imgStyle)
+console.log('props.current.file: ', props.current.file)
+const coverSearchURL = computed(() => {
+  const coverSearchParams = new URLSearchParams({
+    album: props.current.album,
+    artist: props.current.albumartist
+  });
+
+  return 'https://covers.musichoarders.xyz?' + coverSearchParams.toString()
+  console.log('coverSearchURL', coverSearchURL)
+});
 
 const handleClick = (ev) => {
   if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
@@ -122,9 +162,9 @@ watchEffect(() => {
   else debug = false
 })
 
-watchEffect(() => {
-  console.log('hovered:', hovered.value)
-})
+//watchEffect(() => {
+//  console.log('hovered:', hovered.value)
+//})
 
 if ( debug ) {
   watchEffect(() => {
@@ -147,6 +187,15 @@ const mobileMaxWidth = ref('200px') // mobile fallback
 const isLoading = ref(false)
 const isDead = ref(false)
 const deadSVGUrl = ref(null)
+
+const handleImageClick = (ev) => {
+  if (ev.ctrlKey || ev.metaKey) {
+    zoomed.value = !zoomed.value
+    return
+  }
+
+  emit('refreshArt')
+}
 
 if ( debug ) {
   console.log('[DEBUG AlbumArt] debug=', debug)
@@ -177,11 +226,10 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   if ( debug ) console.log('[DEBUG AlbumArt] watcher before if dead', { artist, mbid, isDead: isDead.value })
   if ((props.artist && props.artist.includes('Grateful Dead')) ||
       props.mbArtistID === '6faa7ca7-0d99-4a5e-bfa6-1fd5037520c6') {
-//  if ((artist && artist.includes('Grateful Dead')) ||
-//      mbid === '6faa7ca7-0d99-4a5e-bfa6-1fd5037520c6') {
     isDead.value = true
     if ( debug ) console.log('[DEBUG AlbumArt] watcher inside if dead', { artist, mbid, isDead: isDead.value })
-    const modules = import.meta.glob('./dead/*.svg', { eager: true })
+    const modules = import.meta.glob('./dead/*.svg', { eager: true })  /**/
+
     const paths = Object.values(modules).map(m => m.default)
     if (paths.length > 0) deadSVGUrl.value = paths[Math.floor(Math.random() * paths.length)]
     if ( debug ) console.log('[DEBUG AlbumArt] [DEAD]', { isDead: isDead.value, deadSVGUrl: deadSVGUrl.value })
@@ -238,6 +286,18 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   display: block;
   width: auto;
   max-width: 100%;
+}
+
+.cover-search-button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+
+  z-index: 10;
+  text-decoration: none;
+
+  font-size: 14px;
+  line-height: 1;
 }
 
 .fix-art-button {

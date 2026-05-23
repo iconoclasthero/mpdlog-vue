@@ -102,6 +102,7 @@
       :artist="current.artist"
       :album-art-data="albumArtData"
       :mbArtistID="current.musicbrainz_artistid"
+      :current="current"
       @refreshArt="refreshAlbumArt"
       @action="handleAction"
     />
