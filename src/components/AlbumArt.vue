@@ -64,11 +64,24 @@
          @click="$emit('refreshArt')"
          :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
 
-    <img v-else class="musicdna-placeholder"
-         src="../../assets/musicdna.svg"
-         alt="MusicDNA"
-         @click="$emit('refreshArt')"
-         :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
+    <div v-else class="art-block">
+      <img
+        class="musicdna-placeholder"
+        src="../../assets/musicdna.svg"
+        alt="MusicDNA"
+        @click="$emit('refreshArt')"
+        :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }"
+      >
+
+      <a
+        class="cover-search-button"
+        :href="coverSearchURL"
+        target="_blank"
+        title="Search cover art"
+      >
+        🔍
+      </a>
+    </div>
   </div>
 <!--  <hr v-if="!albumArtData" /> -->
 <hr />
