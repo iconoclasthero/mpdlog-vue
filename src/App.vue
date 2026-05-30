@@ -97,7 +97,7 @@
 
     <!-- Album Art -->
     <AlbumArt
-      v-if="current"
+      v-if="viewMode !== 'artwork' && current"
       :key="componentDebugKey"
       :artist="current.artist"
       :album-art-data="albumArtData"
@@ -109,7 +109,7 @@
 
     <!-- Next Track -->
     <NextTrack
-      v-if="next"
+      v-if="viewMode !== 'artwork' && next"
       :next="next"
       :showPath="showPath"
       @action="handleAction"
@@ -117,7 +117,7 @@
 
     <!-- Log Section -->
     <LogSection
-      v-if="logEntries.length > 0 && (viewMode === 'default' || viewMode === 'log' || viewMode === 'long' )"
+      v-if="viewMode === 'default' || viewMode === 'log' || viewMode === 'long'"
       :entries="logEntries"
       :view-mode="viewMode"
       :showPath="showPath"
@@ -125,16 +125,16 @@
     />
 
     <PlaylistAlbum
-      v-if="viewMode === 'album'"
+      v-else-if="viewMode === 'album'"
       :songs="playlistAlbumSongs"
-      :currentPosition="current?.song_position"
-      :songID="current?.songID"
+      :currentPosition="current?.song_position ?? 0"
+      :songID="current?.songID ?? 0"
       :showPath="showPath"
       @action="handleAction"
     />
 
     <PlaylistCurrent
-      v-if="viewMode === 'current'"
+      v-else-if="viewMode === 'current'"
       :key="playlistCurrentN"
       :songs="playlistCurrentSongs"
       :currentPosition="current?.song_position"
@@ -145,13 +145,20 @@
     />
 
     <SearchView
-    v-if="viewMode === 'search'"
-      :showPath="showPath"     />
+      v-else-if="viewMode === 'search'"
+      :showPath="showPath"
+    />
 
-<!--    :results="searchResults"
-    @ws-send="sendWS"
-    @selection-change="handleSelection"
--->
+    <ArtworkView
+      v-else-if="viewMode === 'artwork'"
+      :key="componentDebugKey"
+      :status="status"
+      :current="current"
+      :next="next"
+      :send-command="sendWebSocketCommand"
+      :showPath="showPath"
+      :path="artworkPath"
+    />
 
     <!-- Navigation Buttons -->
     <NavButtons
@@ -180,6 +187,8 @@
       @cmd="sendWebSocketCommand"
       @close="showPanel = false"
     />
+
+
   </div>
 
   <div class="notification-container">
@@ -212,26 +221,38 @@ import ProgressCircle from './components/ProgressCircle.vue'
 import PlaylistAlbum from './components/PlaylistAlbum.vue'
 import PlaylistCurrent from './components/PlaylistCurrent.vue'
 import SearchView from './components/SearchView.vue'
+import ArtworkView from './components/ArtworkView.vue'
 
 let WS_DEBUG = false
 let debug = false
+
+const viewMode = ref('default')
+const params = new URLSearchParams(location.search)
+viewMode.value = params.get('view') || 'default'
+
 const componentDebugKey = ref(0)
 const componentDebug = ref(false)
 const ws = ref(null)
+const wsQueue = []
+const enqueue = (cmd) => wsQueue.push(cmd)
+
+const flushQueue = () => {
+  if (!ws.value || ws.value.readyState !== WebSocket.OPEN) return
+  while (wsQueue.length) logAndSend(wsQueue.shift())
+}
+
 const isConnected = ref(false)
 const status = ref(null)
 const current = ref(null)
 const next = ref(null)
 const linger = ref(null)
 const pulse_data = ref(null)
-//    const pause_timer = ref(null)
 const logEntries = ref([])
-const viewMode = ref('default')
 const reconnectTimer = ref(null)
 const albumArtData = ref(null)
 const lastAlbumKey = ref(null)
 const lastFile = ref(null)
-//  const showBackTop = ref(false)
+const artworkPath = ref(null)
 const showPanel = ref(false)
 const activeTab = ref('linger')
 const showPath = ref(false)
@@ -247,6 +268,7 @@ const pauseTimer = ref(null)
 const pauseTimerRem = ref(0)    // live countdown (seconds)
 const pauseTimerMin = ref(0)
 const menuLeft = ref(20)
+const albumArtMeta = ref(null)
 let pauseInt = null
 const logLines = ref(logLinesDefault)
 let logFlushTimer = null
@@ -323,7 +345,9 @@ const logAndSend = (msg) => {
   if (ws.value?.readyState === WebSocket.OPEN) {
     ws.value.send(msg)
   } else {
-    console.error('WebSocket not connected, cannot send:', msg)
+//    console.error('WebSocket not connected, cannot send:', msg)
+    console.info('WebSocket not connected, enqueuing msg:', msg)
+    enqueue(msg)
   }
 }
 
@@ -349,6 +373,7 @@ const connectWebSocket = () => {
     isConnected.value = true
     logAndSend(JSON.stringify({ system: 'websocket', cmd: 'subscribe' }))
     // status/log requests are handled by server push now
+    flushQueue()
   }
 
   ws.value.onmessage = async (ev) => {
@@ -384,6 +409,12 @@ const connectWebSocket = () => {
           resultBus.emit('search', msg)
           return
         }
+        if (msg.system === 'artwork') {
+          console.log('[WS artwork]', msg)
+          resultBus.emit('artwork', msg)
+          return
+        }
+
 
         if (msg.system === 'websocket' && msg.cmd === 'subscribe' && msg.response === 'subscribed') {
           console.log('Subscription confirmed by server')
@@ -411,7 +442,7 @@ const connectWebSocket = () => {
 // -------------------------------
 const requestStatus = () => {
   if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-    logAndSend('json-status')
+//    logAndSend('json-status')
   }
 }
 
@@ -433,12 +464,53 @@ const requestLog = () => {
   }
 }
 
+const base64urlenc = (obj) =>
+  btoa(JSON.stringify(obj))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+
+const base64urldec = (str) => {
+  const padded = str + '='.repeat((4 - str.length % 4) % 4)
+
+  return JSON.parse(
+    atob(
+      padded
+        .replace(/-/g, '+')
+        .replace(/_/g, '/')
+    )
+  )
+}
+
+window.base64urlenc = base64urlenc
+window.base64urldec = base64urldec
+
+
+
 const setPlaylistCurrentN = (n) => {
   playlistCurrentN.value = Number(n) || 12
   handleAction({
     type: 'playlist_current',
     n: playlistCurrentN.value
   })
+}
+
+const openArtwork = (path) => {
+  console.log("OPEN ARTWORK CALLED", path)
+  if (!path) return
+
+  artworkPath.value = path
+  viewMode.value = 'artwork'
+
+//    const payload = btoa(JSON.stringify({ path }))
+    const payload = base64urlenc(JSON.stringify({ path }))
+
+
+  const params = new URLSearchParams(location.search)
+  params.set('view', 'artwork')
+  params.set('art', payload)
+
+  history.replaceState({}, '', `?${params}`)
 }
 
 
@@ -452,177 +524,550 @@ const setPlaylistCurrentN = (n) => {
 ////////////////////////////////////////////////////////////////
 
 
-// -------------------------------
-// Handle incoming messages
-// -------------------------------
+//// -------------------------------
+//// Handle incoming messages
+//// -------------------------------
+//const handleWebSocketMessage = async (event) => {
+//  const rawData = event.data
+//  console.log('[WS RAW TYPE]', typeof rawData)
+//  console.log('[WS RAW HEAD]', rawData.slice(0, 80))
+//
+////  if (rawData.includes('\n')) {
+////    const lines = rawData.trim().split('\n').filter(line => line.trim())
+////    const parsed = lines.map(line => {
+////      try { return JSON.parse(line) } catch { return null }
+////    }).filter(e => e !== null)
+////    logEntries.value = parsed
+////    return
+////  }
+//
+//  if (rawData.includes('\n')) {
+//   console.log('[MULTILINE RAW]', rawData)
+//   const lines = rawData.trim().split('\n').filter(line => line.trim())
+//
+////    const parsed = lines.map(line => {
+////      try {
+////        return JSON.parse(line)
+////      } catch {
+////        return null
+////      }
+////    }).filter(Boolean)
+//    const parsed = []
+//
+//    for (const line of lines) {
+//      try {
+//        const obj = JSON.parse(line)
+//        if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+//          parsed.push(obj)
+//        } else {
+//          throw new Error('not object')
+//        }
+//      } catch {
+//        parsed.length = 0
+//        break
+//      }
+//    }
+//
+//if (!parsed.length) {
+//  console.warn('[WS] not JSONL, falling back to single payload handling')
+//  return
+//}
+//    const looksLikeLogEntries = parsed.every(entry =>
+//      entry &&
+//      typeof entry === 'object' &&
+//      entry.timestamps &&
+//      entry.action &&
+//      entry.audio
+//    )
+//
+//    if (looksLikeLogEntries) {
+//      logEntries.value = parsed
+//      return
+//    }
+//
+//    console.warn('Unhandled multiline WS payload:', parsed)
+//  }
+//
+////  let data
+////  try { data = JSON.parse(rawData) } catch (e) {
+////    console.error('Invalid JSON frame:', e)
+////    return
+////  }
+//
+//  let data
+//  try {
+//    data = JSON.parse(rawData)
+//  } catch (e) {
+//    console.warn('[WS NOT JSON]', rawData)
+//    return
+//  }
+//
+//
+//  if (data.cmd === 'json-log' && Array.isArray(data.response)) {
+//    logEntries.value = data.response.slice(0, logLines.value)  // first N entries
+//    console.log('logEntries updated from json-log response, count=', logEntries.value.length)
+//    return
+//  }
+//
+//
+//
+//  if (data.status || data.song) {
+//    status.value = data.status || status.value
+//    current.value = data.song || current.value
+//    return
+//  }
+//
+//  if (data.system && data.cmd && data.response !== undefined) {
+//    if(data.system === "mpd" && data.cmd === "delete" &&
+//      data.response === "ok" && data.deleted > 0 &&
+//      viewMode.value === 'search'
+//    ){
+//      resultBus.emit("playlistChanged")
+//    }
+//    if (data.system === 'playlist' && data.cmd === 'playlist') {
+//      if ( debug ) console.log('[DEBUG App] playlist response received for viewMode:', viewMode.value, data.response)
+//    }
+//    if (data.system === 'playlist' && data.cmd === 'playlist') {
+//      if (!Array.isArray(data.response)) {
+//        console.error('Invalid playlist response:', data.response)
+//        if (viewMode.value === 'current') {
+//          playlistCurrentSongs.value = []
+//        } else if (viewMode.value === 'album') {
+//          playlistAlbumSongs.value = []
+//        }
+//        return
+//      }
+//      if (viewMode.value === 'current') {
+//        playlistCurrentSongs.value = data.response
+//      }
+//      if (viewMode.value === 'album') {
+//        playlistAlbumSongs.value = data.response
+//        console.log('App set playlistAlbumSongs:', playlistAlbumSongs.value.length)
+//      }
+//      return
+//    }
+//    if (data.system === 'playlist' && data.cmd === 'changed') {
+//      resultBus.emit('playlistChanged', data.response)
+//      return
+//    }
+//  }
+//
+//  if (data.system === 'mpd' && data.cmd === 'ignore') {
+//    if (data.response !== 'error' ) addNotification(`Ignored: ${data.response}`)
+//    else addNotification(`Ignored: ${data.error}`)
+//    return
+//  }
+//
+//  if (data.system === 'pulseaudio' && data.cmd === 'set_volume') {
+//    pulse_data.value.volume = data.response
+//  }
+//
+//  if (data.system === 'pulseaudio' && data.cmd === 'changed') {
+//    pulse_data.value.volume = data.response.volume
+//    pulse_data.value.mute = data.response.mute
+//    if ( debug ) console.log('PA changed; volume:', data.response.volume)
+//    if ( debug ) console.log('PA changed; mute:', data.response.mute)
+//  }
+//
+//  if (data.player && data.current) {
+//    const last = lastFile.value
+//    const newFile = data.current.file
+//
+//    status.value = { player: data.player }
+//    current.value = data.current
+//    next.value = data.next
+//    linger.value = data.linger
+////  pulse_data.value = data.pulse_data
+//    pulse_data.value = { ...data.pulse_data }
+////  if ( debug ) console.log('[TEST pulse_data]', data.pulse_data?.volume)
+//    pauseTimer.value = data.pause_timer
+//    if ( debug ) {
+//      console.log('[DEBUG App] data.pause_timer:', data.pause_timer)
+//      console.log('[DEBUG App] pauseTimer.value:', pauseTimer.value)
+//    }
+//    if ( debug ) {
+//      console.log('[DEBUG App] pause timer:', {
+//        'data.pause_timer': data.pause_timer,
+//        'pauseTimer.value': pauseTimer.value
+//      })
+//    }
+//    updatePauseTimer(data.pause_timer)
+//
+//    let albumKey
+//    const cur = data.current
+//    const lgr = data.linger
+//
+//    if (cur.musicbrainz_albumid) {
+//      albumKey = cur.musicbrainz_albumid
+//    } else if (newFile) {
+//      const parts = newFile.split('/')
+//      albumKey = parts.slice(0, -1).join('/')
+//    } else if (cur.album && cur.albumartist) {
+//      albumKey = `${cur.albumartist} -- ${cur.album}`
+//    } else if (lgr?.songid) {
+//      albumKey = lgr.songid
+//    } else {
+//      albumKey = newFile
+//    }
+//
+//    if (albumKey !== lastAlbumKey.value) {
+//      lastAlbumKey.value = albumKey
+//      if (last) {
+//        console.log('Album changed, refreshing art for:', newFile)
+//        refreshAlbumArt(newFile)
+//      }
+//    }
+//
+//    // Track change logging + request log
+//    if (newFile && newFile !== last) {
+//      console.log('Track changed:', newFile)
+//      lastFile.value = newFile
+//      if (initialLoadDone) {  // <-- only request log after first load
+//        requestLog()
+//      } else {
+//        initialLoadDone = true
+//      }
+//    }
+//  }
+//
+//  // inside handleWebSocketMessage, after parsing `data`
+//  if (Array.isArray(data) && data.length > 0 && data[0].timestamps && data[0].action) {
+//    // treat it like a batch of log entries
+//    logEntries.value = data.slice(0, logLines.value)  // keep the first N entries
+//    return
+//  }
+//
+//  if (data.timestamps && data.action) {
+//    // Add to buffer instead of pushing immediately
+//    logBuffer.push(data)
+//
+//    if (!logFlushTimer) {
+//      logFlushTimer = setTimeout(() => {
+//        logEntries.value.push(...logBuffer)
+//        if (logEntries.value.length > logLines.value) {
+//          logEntries.value = logEntries.value.slice(0, logLines.value)
+//        }
+//        logBuffer.length = 0
+//        logFlushTimer = null
+//      }, 50) // 50ms is small enough to be imperceptible
+//    }
+//  }
+//}
+
+
 const handleWebSocketMessage = async (event) => {
-  const rawData = event.data
+  const raw = event.data
 
-  if (rawData.includes('\n')) {
-    const lines = rawData.trim().split('\n').filter(line => line.trim())
-    const parsed = lines.map(line => {
-      try { return JSON.parse(line) } catch { return null }
-    }).filter(e => e !== null)
-    logEntries.value = parsed
-    return
+  if ( debug ) {
+    console.log('[WS RAW TYPE]', typeof raw)
+    console.log('[WS RAW HEAD]', raw.slice(0, 80))
   }
 
-  let data
-  try { data = JSON.parse(rawData) } catch (e) {
-    console.error('Invalid JSON frame:', e)
-    return
+  // ----------------------------
+  // 1. ALWAYS TRY JSON FIRST
+  // ----------------------------
+  let data = null
+
+  try {
+    data = JSON.parse(raw)
+  } catch (_) {
+    data = null
   }
 
-  if (data.cmd === 'json-log' && Array.isArray(data.response)) {
-    logEntries.value = data.response.slice(0, logLines.value)  // first N entries
-    console.log('logEntries updated from json-log response, count=', logEntries.value.length)
-    return
-  }
-
-
-
-  if (data.status || data.song) {
-    status.value = data.status || status.value
-    current.value = data.song || current.value
-    return
-  }
-
-  if (data.system && data.cmd && data.response !== undefined) {
-    if(data.system === "mpd" && data.cmd === "delete" &&
-      data.response === "ok" && data.deleted > 0 &&
-      viewMode.value === 'search'
-    ){
-      resultBus.emit("playlistChanged")
-    }
-    if (data.system === 'playlist' && data.cmd === 'playlist') {
-      if ( debug ) console.log('[DEBUG App] playlist response received for viewMode:', viewMode.value, data.response)
-    }
-    if (data.system === 'playlist' && data.cmd === 'playlist') {
-      if (!Array.isArray(data.response)) {
-        console.error('Invalid playlist response:', data.response)
-        if (viewMode.value === 'current') {
-          playlistCurrentSongs.value = []
-        } else if (viewMode.value === 'album') {
-          playlistAlbumSongs.value = []
-        }
-        return
-      }
-      if (viewMode.value === 'current') {
-        playlistCurrentSongs.value = data.response
-      }
-      if (viewMode.value === 'album') {
-        playlistAlbumSongs.value = data.response
-        console.log('App set playlistAlbumSongs:', playlistAlbumSongs.value.length)
-      }
+  // ----------------------------
+  // 2. ARRAY PAYLOAD (logs batch)
+  // ----------------------------
+  if (Array.isArray(data)) {
+    if (data.length && data[0]?.timestamps && data[0]?.action) {
+      logEntries.value = data.slice(0, logLines.value)
       return
     }
-    if (data.system === 'playlist' && data.cmd === 'changed') {
-      resultBus.emit('playlistChanged', data.response)
+
+    console.warn('[WS ARRAY] unhandled array payload:', data)
+//    logEntries.value = data.slice(0, logLines.value)
+
+    return
+  }
+
+  // ----------------------------
+  // 3. OBJECT PAYLOAD
+  // ----------------------------
+  if (data && typeof data === 'object') {
+
+//    // ----------------------------
+//    // SUBSCRIBE RESPONSE ROUTER
+//    // ----------------------------
+//    if (data.system === 'websocket' && data.cmd === 'subscribe') {
+//
+//      const r = data.response
+//
+//      // ---- status payload (has player/current/next)
+//      if (r && r.player && r.current) {
+//        status.value = { player: r.player }
+//        current.value = r.current
+//        next.value = r.next
+//        linger.value = r.linger
+//        pulse_data.value = { ...r.pulse_data }
+//        pauseTimer.value = r.pause_timer
+//
+//        updatePauseTimer(r.pause_timer)
+//
+//        console.log('[SUBSCRIBE] status applied')
+//        return
+//      }
+//
+//      // ---- log payload (timestamps)
+//      if (Array.isArray(r) && r.length && r[0]?.timestamps) {
+//        logEntries.value = r.slice(0, logLines.value)
+//        console.log('[SUBSCRIBE] logs applied:', r.length)
+//        return
+//      }
+//
+//      if (r && r.timestamps && r.action) {
+//        logBuffer.push(r)
+//
+//        if (!logFlushTimer) {
+//          logFlushTimer = setTimeout(() => {
+//            logEntries.value.push(...logBuffer)
+//            logBuffer.length = 0
+//            logFlushTimer = null
+//          }, 50)
+//        }
+//
+//        return
+//      }
+//
+//      // ---- artwork metadata payload
+//      if (r && r.hash && r.mime && r.size) {
+//        console.log('[SUBSCRIBE] artwork meta:', r)
+//
+//        // optional hook for AlbumArt.vue / ArtworkView.vue
+//        window.__lastArtMeta = r
+//
+//        return
+//      }
+//
+//      console.warn('[SUBSCRIBE] unhandled subscribe response:', data)
+//      return
+//    }
+
+// -------------------------------
+// SUBSCRIBE RESPONSE ROUTER
+// -------------------------------
+if (
+  data &&
+(data.system === "websocket" || data.system === "subscribed") &&
+(data.cmd === "subscribe" || data.cmd === "json-status" )
+) {
+
+  // 1. SUBSCRIBE ACK
+  if (data.response === "subscribed") {
+    console.log("[SUBSCRIBE] confirmed")
+    return
+  }
+
+  // 2. STATUS UPDATE (player / current / next)
+  if (data.response && data.response.player && data.response.current) {
+    console.log("[SUBSCRIBE] status frame")
+
+    status.value = { player: data.response.player }
+    current.value = data.response.current
+    next.value = data.response.next
+    linger.value = data.response.linger
+
+    pulse_data.value = data.response.pulse_data
+    pauseTimer.value = data.response.pause_timer
+
+    updatePauseTimer(data.response.pause_timer)
+
+    return
+  }
+
+  // 3. LOG FRAME (timestamps)
+  if (Array.isArray(data.response)) {
+    const looksLikeLogs = data.response.length &&
+      data.response[0]?.timestamps &&
+      data.response[0]?.action
+
+    if (looksLikeLogs) {
+      console.log("[SUBSCRIBE] log batch:", data.response.length)
+      logEntries.value = data.response.slice(0, logLines.value)
       return
     }
   }
 
-  if (data.system === 'mpd' && data.cmd === 'ignore') {
-    if (data.response !== 'error' ) addNotification(`Ignored: ${data.response}`)
-    else addNotification(`Ignored: ${data.error}`)
+  // 4. ARTWORK META (NO BLOB HERE)
+  if (data.response && data.response.hash) {
+    console.log("[SUBSCRIBE] artwork meta:", data.response)
+
+    // store meta only
+    albumArtMeta.value = {
+      hash: data.response.hash,
+      mime: data.response.mime,
+      size: data.response.size,
+      width: data.response.width,
+      height: data.response.height
+    }
+
     return
-  }
-
-  if (data.system === 'pulseaudio' && data.cmd === 'set_volume') {
-    pulse_data.value.volume = data.response
-  }
-
-  if (data.system === 'pulseaudio' && data.cmd === 'changed') {
-    pulse_data.value.volume = data.response.volume
-    pulse_data.value.mute = data.response.mute
-    if ( debug ) console.log('PA changed; volume:', data.response.volume)
-    if ( debug ) console.log('PA changed; mute:', data.response.mute)
-  }
-
-  if (data.player && data.current) {
-    const last = lastFile.value
-    const newFile = data.current.file
-
-    status.value = { player: data.player }
-    current.value = data.current
-    next.value = data.next
-    linger.value = data.linger
-//  pulse_data.value = data.pulse_data
-    pulse_data.value = { ...data.pulse_data }
-//  if ( debug ) console.log('[TEST pulse_data]', data.pulse_data?.volume)
-    pauseTimer.value = data.pause_timer
-    if ( debug ) {
-      console.log('[DEBUG App] data.pause_timer:', data.pause_timer)
-      console.log('[DEBUG App] pauseTimer.value:', pauseTimer.value)
-    }
-    if ( debug ) {
-      console.log('[DEBUG App] pause timer:', {
-        'data.pause_timer': data.pause_timer,
-        'pauseTimer.value': pauseTimer.value
-      })
-    }
-    updatePauseTimer(data.pause_timer)
-
-    let albumKey
-    const cur = data.current
-    const lgr = data.linger
-
-    if (cur.musicbrainz_albumid) {
-      albumKey = cur.musicbrainz_albumid
-    } else if (newFile) {
-      const parts = newFile.split('/')
-      albumKey = parts.slice(0, -1).join('/')
-    } else if (cur.album && cur.albumartist) {
-      albumKey = `${cur.albumartist} -- ${cur.album}`
-    } else if (lgr?.songid) {
-      albumKey = lgr.songid
-    } else {
-      albumKey = newFile
-    }
-
-    if (albumKey !== lastAlbumKey.value) {
-      lastAlbumKey.value = albumKey
-      if (last) {
-        console.log('Album changed, refreshing art for:', newFile)
-        refreshAlbumArt(newFile)
-      }
-    }
-
-    // Track change logging + request log
-    if (newFile && newFile !== last) {
-      console.log('Track changed:', newFile)
-      lastFile.value = newFile
-      if (initialLoadDone) {  // <-- only request log after first load
-        requestLog()
-      } else {
-        initialLoadDone = true
-      }
-    }
-  }
-
-  // inside handleWebSocketMessage, after parsing `data`
-  if (Array.isArray(data) && data.length > 0 && data[0].timestamps && data[0].action) {
-    // treat it like a batch of log entries
-    logEntries.value = data.slice(0, logLines.value)  // keep the first N entries
-    return
-  }
-
-  if (data.timestamps && data.action) {
-    // Add to buffer instead of pushing immediately
-    logBuffer.push(data)
-
-    if (!logFlushTimer) {
-      logFlushTimer = setTimeout(() => {
-        logEntries.value.push(...logBuffer)
-        if (logEntries.value.length > logLines.value) {
-          logEntries.value = logEntries.value.slice(0, logLines.value)
-        }
-        logBuffer.length = 0
-        logFlushTimer = null
-      }, 50) // 50ms is small enough to be imperceptible
-    }
   }
 }
+// -------------------------------
+// BINARY FRAME (album art blob)
+// -------------------------------
+if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
+  console.log("[WS] binary frame received (album art)")
+
+  albumArtBlob.value = event.data
+
+  // optional: immediate render hook
+  // refreshAlbumArtFromBlob(event.data)
+
+  return
+}
+    // ---- log batch (json-log)
+    if (data.cmd === 'json-log' && Array.isArray(data.response)) {
+      logEntries.value = data.response.slice(0, logLines.value)
+      return
+    }
+
+    // ---- status
+    if (data.status || data.song) {
+      status.value = data.status || status.value
+      current.value = data.song || current.value
+      return
+    }
+
+    // ---- mpd / playlist / system block
+    if (data.system && data.cmd && data.response !== undefined) {
+
+      if (
+        data.system === "mpd" &&
+        data.cmd === "delete" &&
+        data.response === "ok" &&
+        data.deleted > 0 &&
+        viewMode.value === 'search'
+      ) {
+        resultBus.emit("playlistChanged")
+        return
+      }
+
+      if (data.system === 'playlist' && data.cmd === 'playlist') {
+        if (!Array.isArray(data.response)) {
+          console.error('[PLAYLIST] invalid response:', data.response)
+          return
+        }
+
+        if (viewMode.value === 'current') {
+          playlistCurrentSongs.value = data.response
+        }
+
+        if (viewMode.value === 'album') {
+          playlistAlbumSongs.value = data.response
+        }
+
+        return
+      }
+
+      if (data.system === 'playlist' && data.cmd === 'changed') {
+        resultBus.emit('playlistChanged', data.response)
+        return
+      }
+
+      if (data.system === 'mpd' && data.cmd === 'ignore') {
+        addNotification(
+          data.response !== 'error'
+            ? `Ignored: ${data.response}`
+            : `Ignored: ${data.error}`
+        )
+        return
+      }
+
+      if (data.system === 'pulseaudio' && data.cmd === 'set_volume') {
+        pulse_data.value.volume = data.response
+        return
+      }
+
+      if (data.system === 'pulseaudio' && data.cmd === 'changed') {
+        pulse_data.value.volume = data.response.volume
+        pulse_data.value.mute = data.response.mute
+        return
+      }
+
+      return
+    }
+
+    // ---- player state (heavy block)
+    if (data.player && data.current) {
+      const last = lastFile.value
+      const newFile = data.current.file
+
+      status.value = { player: data.player }
+      current.value = data.current
+      next.value = data.next
+      linger.value = data.linger
+      pulse_data.value = { ...data.pulse_data }
+      pauseTimer.value = data.pause_timer
+
+      updatePauseTimer(data.pause_timer)
+
+      let albumKey
+
+      if (data.current.musicbrainz_albumid) {
+        albumKey = data.current.musicbrainz_albumid
+      } else if (newFile) {
+        albumKey = newFile.split('/').slice(0, -1).join('/')
+      } else if (data.current.album && data.current.albumartist) {
+        albumKey = `${data.current.albumartist} -- ${data.current.album}`
+      } else if (data.linger?.songid) {
+        albumKey = data.linger.songid
+      } else {
+        albumKey = newFile
+      }
+
+      if (albumKey !== lastAlbumKey.value) {
+        lastAlbumKey.value = albumKey
+        if (last) refreshAlbumArt(newFile)
+      }
+
+      if (newFile && newFile !== last) {
+        lastFile.value = newFile
+
+        if (initialLoadDone) requestLog()
+        else initialLoadDone = true
+      }
+
+      return
+    }
+
+    // ---- timestamp log stream (single object)
+    if (data.timestamps && data.action) {
+      logBuffer.push(data)
+
+      if (!logFlushTimer) {
+        logFlushTimer = setTimeout(() => {
+          logEntries.value.push(...logBuffer)
+          if (logEntries.value.length > logLines.value) {
+            logEntries.value = logEntries.value.slice(0, logLines.value)
+          }
+          logBuffer.length = 0
+          logFlushTimer = null
+        }, 50)
+      }
+
+      return
+    }
+
+    console.warn('[WS OBJECT] unhandled payload:', data)
+    return
+  }
+
+  // ----------------------------
+  // 4. STRING PAYLOAD fallback
+  // ----------------------------
+  console.warn('[WS STRING] non-json payload:', raw)
+}
+
 
 // -------------------------------
 // Requests
@@ -703,12 +1148,20 @@ const handleAction = (action) => {
 
     if (action.type === 'playlist_album') {
       console.log('Action Object: playlist_album received')
-      viewMode.value = 'album'
+//      viewMode.value = 'album'
+      changeView('album')
       sendCommand(JSON.stringify({
         system: 'playlist',
         cmd: 'playlist',
         args: 'album'
       }))
+//if (viewMode.value === 'album') {
+//  sendCommand(JSON.stringify({
+//    system: 'playlist',
+//    cmd: 'playlist',
+//    args: 'album'
+//  }))
+//}
       return
     }
 
@@ -770,7 +1223,7 @@ const handleAction = (action) => {
     linger_start:     'linger-start',
     linger_toggle:    'toggle',
     toggle_output:    'toggle-output',
-    json_status:      'json-status'
+//    json_status:      'json-status'
   }
   if (map[action]) {
     if ( debug ) console.log('[DEBUG App] sending:', map[action])
@@ -778,7 +1231,16 @@ const handleAction = (action) => {
   }
 }
 
-const changeView = (mode) => { viewMode.value = mode }
+// const changeView = (mode) => { viewMode.value = mode }
+const changeView = (mode) => {
+  console.log('changeView called:', mode)
+  viewMode.value = mode
+
+  const params = new URLSearchParams(location.search)
+  params.set('view', mode)
+
+  history.replaceState({}, '', `?${params.toString()}`)
+}
 
 
 const handleVisibilityChange = () => {
@@ -879,6 +1341,24 @@ const refreshAlbumArt = (file = current.value.file) => {
 const handleKeydown = (ev) => {
   const key = ev.key.toLowerCase()
 
+  // Alt+A → toggle artwork view
+  if (ev.altKey && key === 'a') {
+    ev.preventDefault()
+
+//    viewMode.value =
+//      viewMode.value === 'artwork'
+//        ? 'default'
+//        : 'artwork'
+    if (viewMode.value === 'artwork') {
+      viewMode.value = 'default'
+    } else {
+      artworkPath.value = current?.value?.file
+        ?.replace(/\/[^/]+$/, '')
+
+      viewMode.value = 'artwork'
+    }
+  }
+
   // Alt+B → blocklimit modal
   if (ev.altKey && key === 'b') {
     ev.preventDefault()
@@ -967,6 +1447,9 @@ onMounted(() => {
   // --- attach keydown listener for multiple shortcuts ---
   window.addEventListener('keydown', handleKeydown)
 
+  if (viewMode.value === 'album') {
+    handleAction({ type: 'playlist_album' })
+  }
   let chk = setInterval(() => {
     const el = document.querySelector('.album.desktop')
     if ( debug ) console.log('[DEBUG App] MENU RETRY:', !!el)
@@ -978,6 +1461,17 @@ onMounted(() => {
     }
   }, 50)
 
+  const params = new URLSearchParams(location.search)
+
+  if (params.get('view') === 'artwork') {
+    try {
+//      const decoded = JSON.parse(atob(params.get('art')))
+      const decoded = base64urldec(params.get('art'))
+      artworkPath.value = decoded.path
+    } catch (err) {
+      console.error('bad artwork payload', err)
+    }
+  }
   update()
   window.addEventListener('resize', update)
   mq.addEventListener('change', update)

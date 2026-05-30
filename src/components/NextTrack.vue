@@ -1,4 +1,5 @@
 <template>
+  <hr style="background-color:#912715">
   <div>
     <span class="time">
       <strong><em>

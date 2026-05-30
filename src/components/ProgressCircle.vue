@@ -87,7 +87,7 @@ const arcPath = computed(() => {
   const largeArcFlag = theta > Math.PI ? 1 : 0
 
   // debug error messages; can probably be removed next time you see this:
-  if ( debug && ( percent > 0.995 || percent < 0.001 || isNaN(start.x) || isNaN(start.y)))
+  if ( debug && ( percent > 0.995 || isNaN(start.x) || isNaN(start.y)))
     console.log('[DEBUG ProgressCircle]',
               '\n     percent=', percent * 100,
               '\n    duration=', props.duration,

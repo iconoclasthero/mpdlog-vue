@@ -4,13 +4,11 @@
     <strong class="time">🪵 of previous songs:</strong>
     <br><br>
 
-<!--    <template v-for="(entry, index) in entries" :key="index"> -->
     <template v-for="(entry, index) in logEntries" :key="index">
       <details name="Listen">
         <summary>
           <strong class="timestamp">
-<!--            @ {{ entry.timestamps.display }}, {{ entry.action }} -->
-              @ {{ entry.timestamps.display }},
+              @ {{ entry?.timestamps?.display }},
               {{ entry.action === 'skipped-ignored'
                   ? 'skipped and ignored'
                   : entry.action }}
@@ -28,7 +26,6 @@
         <a href="#" style="color: crimson;font-weight: bold;" @click.prevent="$emit('action', { type: 'ignore-log-entry', payload: entry.file })" title="Ignore log entry">🚫 Ignore this song... </a>
       </details>
 
-<!--      <strong class="song"> -->
         <strong
           class="song"
           :class="{
@@ -61,7 +58,6 @@
         </a>
       </strong>
       <br>
-<!--      <span v-if="showPath || viewMode === 'long' || viewMode === 'log'" class="album file-path"> -->
       <span v-if="showPath" class="album file-path">
 
         <span style="text-decoration: none; display: inline-block;">
@@ -70,157 +66,88 @@
         </a></span>
         <br>
       </span>
-
-<!--      <span v-if="viewMode === 'long'" class="album">
-        {{ entry.file }}
-      </span>
-      <br v-if="viewMode === 'long'">
--->
       <br>
     </template>
   </div>
 </template>
 
 <script>
-import { ref, reactive, computed, watch } from 'vue'
-import { sec2sex } from '@/utils/time.js'
+  import { ref, reactive, computed, watch } from 'vue'
+  import { sec2sex } from '@/utils/time.js'
 
-export default {
-  name: 'LogSection',
-  emits: ['action'],
-  props: {
-    entries: Array,
-    viewMode: String,
-    showPath: Boolean
-  },
-//  setup(props) {
-//   const internalEntries = ref(props.entries || [])
-//
-//  watch(() => props.entries, newVal => {
-//    internalEntries.value = newVal
-//  })
-//
-//  watch(() => props.viewMode, newMode => {
-//    console.log('viewMode changed to', newMode)
-//    // optionally recalc something based on newMode
-//  })
-//
-//    const formatDisc = (disc) => {
-//      return String(disc || '0').padStart(2, '0')
-//    }
-//
-//    const formatTrack = (track) => {
-//      return String(track || '0').padStart(2, '0')
-//    }
-//
-//    const formatDuration = (duration) => sec2sex(duration || 0)
-//
-//    const formatAlbum = (album, year) => {
-//      const cleanAlbum = album?.replace(' (mp3)', '') || ''
-//      const yearPart = year?.split('-')[0] || ''
-//      return `${cleanAlbum} ${yearPart ? `(${yearPart})` : ''}`
-//    }
-//
-//    // --- merged log entries for skipped+ignored ---
-//    const logEntries = computed(() => {
-//      const result = []
-//      const list = props.entries || []
-//
-//      for (let i = 0; i < list.length; i++) {
-//        const cur = list[i]
-//        const next = list[i + 1]
-//
-//        if (
-//          cur?.action === 'skipped' &&
-//          next?.action === 'ignored' &&
-//          cur.file === next.file
-//        ) {
-//          result.push({
-//            ...cur,
-//            action: 'skipped-ignored'
-//          })
-//          i++
-//          continue
-//        }
-//
-//        result.push(cur)
-//      }
-//
-//      return result
-//    })
-//
-//    return {
-//      logEntries,
-//      formatDisc,
-//      formatTrack,
-//      formatDuration,
-//      formatAlbum
-//    }
-//  }
-setup(props) {
-  // --- reactive copies of props ---
-  const internalEntries = ref(props.entries || [])
-  const internalViewMode = ref(props.viewMode || 'short')
+  export default {
+    name: 'LogSection',
+    emits: ['action'],
+    props: {
+      entries: Array,
+      viewMode: String,
+      showPath: Boolean
+    },
 
-  // --- watch props.entries ---
-  watch(
-    () => props.entries,
-    newVal => {
-      internalEntries.value = newVal || []
+    setup(props) {
+      // --- reactive copies of props ---
+      const internalEntries = ref(props.entries || [])
+      const internalViewMode = ref(props.viewMode || 'short')
+
+      // --- watch props.entries ---
+      watch(
+        () => props.entries,
+        newVal => {
+          internalEntries.value = newVal || []
+        }
+      )
+
+      // --- watch props.viewMode ---
+      watch(
+        () => props.viewMode,
+        newMode => {
+          internalViewMode.value = newMode || 'short'
+          console.log('viewMode changed to', internalViewMode.value)
+          // you could recalc derived values here if needed
+        }
+      )
+
+      // --- formatting helpers ---
+      const formatDisc = disc => String(disc || '0').padStart(2, '0')
+      const formatTrack = track => String(track || '0').padStart(2, '0')
+      const formatDuration = duration => sec2sex(duration || 0)
+      const formatAlbum = (album, year) => {
+      const cleanAlbum = album?.replace(' (mp3)', '') || ''
+      const yearPart = year?.split('-')[0] || ''
+      return `${cleanAlbum} ${yearPart ? `(${yearPart})` : ''}`
     }
-  )
 
-  // --- watch props.viewMode ---
-  watch(
-    () => props.viewMode,
-    newMode => {
-      internalViewMode.value = newMode || 'short'
-      console.log('viewMode changed to', internalViewMode.value)
-      // you could recalc derived values here if needed
-    }
-  )
+    // --- merged log entries for skipped+ignored ---
+    const logEntries = computed(() => {
+      const list = internalEntries.value || []
+      const result = []
 
-  // --- formatting helpers ---
-  const formatDisc = disc => String(disc || '0').padStart(2, '0')
-  const formatTrack = track => String(track || '0').padStart(2, '0')
-  const formatDuration = duration => sec2sex(duration || 0)
-  const formatAlbum = (album, year) => {
-    const cleanAlbum = album?.replace(' (mp3)', '') || ''
-    const yearPart = year?.split('-')[0] || ''
-    return `${cleanAlbum} ${yearPart ? `(${yearPart})` : ''}`
-  }
+      for (let i = 0; i < list.length; i++) {
+        const cur = list[i]
+        const next = list[i + 1]
 
-  // --- merged log entries for skipped+ignored ---
-  const logEntries = computed(() => {
-    const list = internalEntries.value || []
-    const result = []
+        if (cur?.action === 'skipped' && next?.action === 'ignored' && cur.file === next.file) {
+          result.push({ ...cur, action: 'skipped-ignored' })
+          i++
+          continue
+        }
 
-    for (let i = 0; i < list.length; i++) {
-      const cur = list[i]
-      const next = list[i + 1]
-
-      if (cur?.action === 'skipped' && next?.action === 'ignored' && cur.file === next.file) {
-        result.push({ ...cur, action: 'skipped-ignored' })
-        i++
-        continue
+        result.push(cur)
       }
 
-      result.push(cur)
+      return result
+    })
+
+    return {
+      internalEntries,
+      internalViewMode,
+      logEntries,
+      formatDisc,
+      formatTrack,
+      formatDuration,
+      formatAlbum
     }
-
-    return result
-  })
-
-  return {
-    internalEntries,
-    internalViewMode,
-    logEntries,
-    formatDisc,
-    formatTrack,
-    formatDuration,
-    formatAlbum
-  }
-}
+  } //setup props
 }
 </script>
 

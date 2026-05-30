@@ -1,4 +1,5 @@
 <template>
+<!--  <hr style="background-color:#912715"> -->
   <div class="album-art-container">
     <!-- Desktop: unchanged -->
 
@@ -84,7 +85,7 @@
     </div>
   </div>
 <!--  <hr v-if="!albumArtData" /> -->
-<hr />
+<!-- <hr /> -->
 </template>
 
 <script setup>

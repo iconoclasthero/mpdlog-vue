@@ -274,7 +274,8 @@
       </template>
     </span>
 
-    <br><hr>
+    <br><br>
+<!--    <hr style="background-color:#912715"> -->
   </div>
 </template>
 
