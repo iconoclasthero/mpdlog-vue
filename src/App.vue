@@ -442,7 +442,7 @@ const connectWebSocket = () => {
 // -------------------------------
 const requestStatus = () => {
   if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-//    logAndSend('json-status')
+    logAndSend('json-status')
   }
 }
 
@@ -784,7 +784,6 @@ const handleWebSocketMessage = async (event) => {
     }
 
     console.warn('[WS ARRAY] unhandled array payload:', data)
-//    logEntries.value = data.slice(0, logLines.value)
 
     return
   }
@@ -1223,7 +1222,7 @@ const handleAction = (action) => {
     linger_start:     'linger-start',
     linger_toggle:    'toggle',
     toggle_output:    'toggle-output',
-//    json_status:      'json-status'
+    json_status:      'json-status'
   }
   if (map[action]) {
     if ( debug ) console.log('[DEBUG App] sending:', map[action])
