@@ -102,6 +102,14 @@ const props = defineProps({
   current: Object
 })
 
+const debugRef = inject('componentDebug')
+
+let debug = false
+watchEffect(() => {
+  if (debugRef.value) debug = true
+  else debug = false
+})
+
 //const imgStyle = computed(() => ({
 //  height: 'auto',
 //  maxWidth: hovered.value
@@ -118,7 +126,7 @@ const imgStyle = computed(() => ({
     : (layout.narrow.value ? mobileMaxWidth.value : deskWidth.value + 'px')
 }))
 
-console.log('imgStyle', imgStyle)
+if (debug) console.log('imgStyle', imgStyle)
 console.log('props.current.file: ', props.current.file)
 const coverSearchURL = computed(() => {
   const coverSearchParams = new URLSearchParams({
@@ -168,13 +176,6 @@ const checkSize = (ev) => {
 const layout = inject('layout', { narrow: false })
 //const debugRef = inject('debug', false) // gets the reactive ref
 //const debugRef = inject('debug') || ref(false) // gets the reactive ref
-const debugRef = inject('componentDebug')
-
-let debug = false
-watchEffect(() => {
-  if (debugRef.value) debug = true
-  else debug = false
-})
 
 //watchEffect(() => {
 //  console.log('hovered:', hovered.value)

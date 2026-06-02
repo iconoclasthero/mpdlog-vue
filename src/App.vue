@@ -209,6 +209,7 @@
 
 
 import { ref, onMounted, onUnmounted, provide, computed, watch, } from 'vue'
+import fnv1a from '@sindresorhus/fnv1a'
 import { sec2sex } from '@/utils/time.js'
 import CurrentlyPlaying from './components/CurrentlyPlaying.vue'
 import AlbumArt from './components/AlbumArt.vue'
@@ -223,15 +224,17 @@ import PlaylistCurrent from './components/PlaylistCurrent.vue'
 import SearchView from './components/SearchView.vue'
 import ArtworkView from './components/ArtworkView.vue'
 
-let WS_DEBUG = false
+let WS_DEBUG = true
 let debug = false
+const componentDebugKey = ref(0)
+const componentDebug = ref(false)
+console.log('debug=', debug, 'wsdebug=', WS_DEBUG, 'componentDebug=', componentDebug.value)
+
 
 const viewMode = ref('default')
 const params = new URLSearchParams(location.search)
 viewMode.value = params.get('view') || 'default'
 
-const componentDebugKey = ref(0)
-const componentDebug = ref(false)
 const ws = ref(null)
 const wsQueue = []
 const enqueue = (cmd) => wsQueue.push(cmd)
@@ -241,6 +244,17 @@ const flushQueue = () => {
   while (wsQueue.length) logAndSend(wsQueue.shift())
 }
 
+const art = {
+  hash: null,
+  note: null,
+  pending: null,
+  blob: null,
+  url: null,
+  meta: null
+}
+
+const albumArtData = ref(null)
+
 const isConnected = ref(false)
 const status = ref(null)
 const current = ref(null)
@@ -249,7 +263,8 @@ const linger = ref(null)
 const pulse_data = ref(null)
 const logEntries = ref([])
 const reconnectTimer = ref(null)
-const albumArtData = ref(null)
+const lastArtHash = ref(null)
+const lastArtUrl = ref(null)
 const lastAlbumKey = ref(null)
 const lastFile = ref(null)
 const artworkPath = ref(null)
@@ -338,9 +353,9 @@ provide('resultBus', resultBus)
 // Helper to log and send messages
 // -------------------------------
 const logAndSend = (msg) => {
-  console.log('→ Sending WebSocket:', msg)
+  if (! WS_DEBUG) console.log('→ Sending WebSocket:', msg)
   if (WS_DEBUG && msg !== 'json-status' )
-  console.log('[WS →]', typeof msg === 'string' ? JSON.parse(msg) : msg)
+  console.log('[→ WS]', typeof msg === 'string' ? JSON.parse(msg) : msg)
 
   if (ws.value?.readyState === WebSocket.OPEN) {
     ws.value.send(msg)
@@ -351,12 +366,18 @@ const logAndSend = (msg) => {
   }
 }
 
+
 // -------------------------------
 // WebSocket connection
 // -------------------------------
-const connectWebSocket = () => {
-  console.log("connectWebSocket called")
-  if (ws.value && (ws.value.readyState === WebSocket.OPEN || ws.value.readyState === WebSocket.CONNECTING)) {
+const connectWebSocketRouter = () => {
+  console.log("connectWebSocketRouter called")
+
+  if (
+    ws.value &&
+    (ws.value.readyState === WebSocket.OPEN ||
+     ws.value.readyState === WebSocket.CONNECTING)
+  ) {
     console.log('WebSocket already open or connecting, skipping')
     return
   }
@@ -365,76 +386,210 @@ const connectWebSocket = () => {
 //    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'                              //
 //    const wsUrl = `${protocol}//${window.location.host}/ws`                                              //
   const wsUrl = 'ws://192.168.1.2:8008/ws'
+
   console.log('Connecting to WebSocket:', wsUrl)
+
   ws.value = new WebSocket(wsUrl)
 
   ws.value.onopen = () => {
     console.log('WebSocket connected')
     isConnected.value = true
-    logAndSend(JSON.stringify({ system: 'websocket', cmd: 'subscribe' }))
-    // status/log requests are handled by server push now
+
+    logAndSend(JSON.stringify({
+      system: 'websocket',
+      cmd: 'subscribe'
+    }))
+
     flushQueue()
   }
 
   ws.value.onmessage = async (ev) => {
-    if (ev.data instanceof Blob || ev.data instanceof ArrayBuffer) {
-      const buffer = ev.data instanceof Blob
-        ? await ev.data.arrayBuffer()
-        : ev.data
+    const rawData = ev.data
 
-      // Optional: detect type from magic bytes (JPEG vs PNG)
-      const bytes = new Uint8Array(buffer)
-      let mime = 'image/jpeg' // fallback
-
-      if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
-        mime = 'image/png'
-      } else if (bytes[0] === 0xFF && bytes[1] === 0xD8) {
-        mime = 'image/jpeg'
-      }
-
-      const blob = new Blob([buffer], { type: mime })
-
-      if (albumArtData.value?.startsWith('blob:')) {
-        URL.revokeObjectURL(albumArtData.value)
-      }
-
-      albumArtData.value = blob.size > 0 ? URL.createObjectURL(blob) : null
-    } else {
-      let textData = typeof ev.data === 'string' ? ev.data : new TextDecoder().decode(ev.data)
-      try {
-        const msg = JSON.parse(textData)
-        if (WS_DEBUG)
-          console.log('[WS ←]', msg)
-        if (msg.system === 'search') {
-          resultBus.emit('search', msg)
-          return
-        }
-        if (msg.system === 'artwork') {
-          console.log('[WS artwork]', msg)
-          resultBus.emit('artwork', msg)
-          return
-        }
-
-
-        if (msg.system === 'websocket' && msg.cmd === 'subscribe' && msg.response === 'subscribed') {
-          console.log('Subscription confirmed by server')
-        } else {
-          handleWebSocketMessage({ data: textData })
-        }
-      } catch {
-        handleWebSocketMessage({ data: textData })
-      }
+    // ----------------------------
+    // 1. BLOB ROUTE (ONLY PBP)
+    // ----------------------------
+    if (rawData instanceof Blob || rawData instanceof ArrayBuffer) {
+      await handleBlob(rawData)
+      return
     }
+
+    // ----------------------------
+    // 2. TEXT FRAME
+    // ----------------------------
+    let textData =
+      typeof rawData === 'string'
+        ? rawData
+        : new TextDecoder().decode(rawData)
+
+    let msg = null
+
+    try {
+      msg = JSON.parse(textData)
+      if (WS_DEBUG) console.log('[← WS]', msg)
+    } catch {
+      handleWebSocketMessage({ data: textData })
+      return
+    }
+
+    // ----------------------------
+    // 3. RESULT BUS ROUTES
+    // ----------------------------
+    if (msg.system === 'search') {
+      resultBus.emit('search', msg)
+      return
+    }
+
+    if (msg.system === 'artwork') {
+      resultBus.emit('artwork', msg)
+      return
+    }
+
+    // ----------------------------
+    // 4. ALBUM ART → BLOB HANDLER ONLY STAGING
+    // ----------------------------
+    if (msg.cmd === 'albumart') {
+      await handleBlob(null, msg)
+      return
+    }
+
+    // ----------------------------
+    // 5. SUBSCRIBE ACK (optional pass-through)
+    // ----------------------------
+    if (
+      msg.system === 'websocket' &&
+      msg.cmd === 'subscribe' &&
+      msg.response === 'subscribed'
+    ) {
+      console.log('[← WS] subscribe confirmed')
+      return
+    }
+
+    // ----------------------------
+    // 6. FALLBACK
+    // ----------------------------
+    handleWebSocketMessage({ data: textData })
   }
 
-  ws.value.onerror = (err) => console.error('WebSocket error:', err)
-  ws.value.onclose = () => {
-    console.log('[WS CLOSED]', { code: event.code, reason: event.reason, wasClean: event.wasClean })
+  ws.value.onerror = (err) => {
+    console.log('[WS] error', err)
+  }
+
+  ws.value.onclose = (event) => {
+    console.log('[WS CLOSED]', {
+      code: event.code,
+      reason: event.reason,
+      wasClean: event.wasClean
+    })
+
     isConnected.value = false
-    reconnectTimer.value = setTimeout(connectWebSocket, 3000)
+    reconnectTimer.value = setTimeout(connectWebSocketRouter, 3000)
   }
 }
+// const connectWebSocketRouter = () => {
 
+
+const handleBlob = async (rawData, msg = null) => {
+
+  // ----------------------------
+  // 1. PREFIX JSON STAGE
+  // ----------------------------
+  if (msg?.cmd === 'albumart') {
+
+    art.meta = msg
+    const r = msg.response || {}
+
+    const note = msg.note || null
+
+    // ---- NOOP ----
+    if (note === 'noop') {
+      return true
+    }
+
+    // ---- CLEAR ART ----
+    if (note === 'noart' || r.hash === 0 || r.hash === '0') {
+      if (art.url) URL.revokeObjectURL(art.url)
+
+      art.url = null
+      art.hash = null
+      art.pending = null
+      art.meta = null
+
+      albumArtData.value = null
+      return true
+    }
+
+    // ---- STAGE HASH + MIME ----
+    if (r.hash) {
+//      art.pending = String(r.hash)
+      const newHash = String(r.hash)
+      const oldHash = art.hash || art.pending
+
+      // ----------------------------
+      // UI INVALIDATION (IMPORTANT)
+      // ----------------------------
+      if (msg.note === 'update' || (oldHash && oldHash !== newHash)) {
+        albumArtData.value = null
+      }
+
+      art.pending = newHash
+      art.mime = r.mime || art.mime || 'image/jpeg'
+
+      console.log('[WS ART HASH STAGED]', art.pending)
+      return true
+    }
+
+    return true
+  }
+
+  // ----------------------------
+  // 2. BLOB STAGE
+  // ----------------------------
+  if (!(rawData instanceof Blob || rawData instanceof ArrayBuffer)) {
+    return false
+  }
+
+  if (!art.pending) {
+    return false
+  }
+
+  const buf = rawData instanceof Blob
+    ? await rawData.arrayBuffer()
+    : rawData
+
+  const bytes = new Uint8Array(buf)
+
+  const clientHash = fnv1a(bytes, { size: 64 }).toString()
+
+  console.log('[WS ART HASH CHECK]', {
+    server: art.pending,
+    client: clientHash,
+    match: art.pending === clientHash
+  })
+
+  if (art.pending !== clientHash) {
+    return true
+  }
+
+  const blob = new Blob([buf], {
+    type: art.mime || art.meta?.response?.mime || 'image/jpeg'
+  })
+
+  if (art.url) URL.revokeObjectURL(art.url)
+
+  art.url = URL.createObjectURL(blob)
+
+  albumArtData.value = null
+  requestAnimationFrame(() => {
+    albumArtData.value = art.url
+  })
+
+  art.hash = art.pending
+  art.pending = null
+
+  return true
+}
+// const handleBlob = async (rawData, msg = null) => {
 
 
 // -------------------------------
@@ -523,244 +678,12 @@ const openArtwork = (path) => {
 //    }, 5000) // 5s is reasonable for cheap requests         //
 ////////////////////////////////////////////////////////////////
 
-
-//// -------------------------------
-//// Handle incoming messages
-//// -------------------------------
-//const handleWebSocketMessage = async (event) => {
-//  const rawData = event.data
-//  console.log('[WS RAW TYPE]', typeof rawData)
-//  console.log('[WS RAW HEAD]', rawData.slice(0, 80))
-//
-////  if (rawData.includes('\n')) {
-////    const lines = rawData.trim().split('\n').filter(line => line.trim())
-////    const parsed = lines.map(line => {
-////      try { return JSON.parse(line) } catch { return null }
-////    }).filter(e => e !== null)
-////    logEntries.value = parsed
-////    return
-////  }
-//
-//  if (rawData.includes('\n')) {
-//   console.log('[MULTILINE RAW]', rawData)
-//   const lines = rawData.trim().split('\n').filter(line => line.trim())
-//
-////    const parsed = lines.map(line => {
-////      try {
-////        return JSON.parse(line)
-////      } catch {
-////        return null
-////      }
-////    }).filter(Boolean)
-//    const parsed = []
-//
-//    for (const line of lines) {
-//      try {
-//        const obj = JSON.parse(line)
-//        if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-//          parsed.push(obj)
-//        } else {
-//          throw new Error('not object')
-//        }
-//      } catch {
-//        parsed.length = 0
-//        break
-//      }
-//    }
-//
-//if (!parsed.length) {
-//  console.warn('[WS] not JSONL, falling back to single payload handling')
-//  return
-//}
-//    const looksLikeLogEntries = parsed.every(entry =>
-//      entry &&
-//      typeof entry === 'object' &&
-//      entry.timestamps &&
-//      entry.action &&
-//      entry.audio
-//    )
-//
-//    if (looksLikeLogEntries) {
-//      logEntries.value = parsed
-//      return
-//    }
-//
-//    console.warn('Unhandled multiline WS payload:', parsed)
-//  }
-//
-////  let data
-////  try { data = JSON.parse(rawData) } catch (e) {
-////    console.error('Invalid JSON frame:', e)
-////    return
-////  }
-//
-//  let data
-//  try {
-//    data = JSON.parse(rawData)
-//  } catch (e) {
-//    console.warn('[WS NOT JSON]', rawData)
-//    return
-//  }
-//
-//
-//  if (data.cmd === 'json-log' && Array.isArray(data.response)) {
-//    logEntries.value = data.response.slice(0, logLines.value)  // first N entries
-//    console.log('logEntries updated from json-log response, count=', logEntries.value.length)
-//    return
-//  }
-//
-//
-//
-//  if (data.status || data.song) {
-//    status.value = data.status || status.value
-//    current.value = data.song || current.value
-//    return
-//  }
-//
-//  if (data.system && data.cmd && data.response !== undefined) {
-//    if(data.system === "mpd" && data.cmd === "delete" &&
-//      data.response === "ok" && data.deleted > 0 &&
-//      viewMode.value === 'search'
-//    ){
-//      resultBus.emit("playlistChanged")
-//    }
-//    if (data.system === 'playlist' && data.cmd === 'playlist') {
-//      if ( debug ) console.log('[DEBUG App] playlist response received for viewMode:', viewMode.value, data.response)
-//    }
-//    if (data.system === 'playlist' && data.cmd === 'playlist') {
-//      if (!Array.isArray(data.response)) {
-//        console.error('Invalid playlist response:', data.response)
-//        if (viewMode.value === 'current') {
-//          playlistCurrentSongs.value = []
-//        } else if (viewMode.value === 'album') {
-//          playlistAlbumSongs.value = []
-//        }
-//        return
-//      }
-//      if (viewMode.value === 'current') {
-//        playlistCurrentSongs.value = data.response
-//      }
-//      if (viewMode.value === 'album') {
-//        playlistAlbumSongs.value = data.response
-//        console.log('App set playlistAlbumSongs:', playlistAlbumSongs.value.length)
-//      }
-//      return
-//    }
-//    if (data.system === 'playlist' && data.cmd === 'changed') {
-//      resultBus.emit('playlistChanged', data.response)
-//      return
-//    }
-//  }
-//
-//  if (data.system === 'mpd' && data.cmd === 'ignore') {
-//    if (data.response !== 'error' ) addNotification(`Ignored: ${data.response}`)
-//    else addNotification(`Ignored: ${data.error}`)
-//    return
-//  }
-//
-//  if (data.system === 'pulseaudio' && data.cmd === 'set_volume') {
-//    pulse_data.value.volume = data.response
-//  }
-//
-//  if (data.system === 'pulseaudio' && data.cmd === 'changed') {
-//    pulse_data.value.volume = data.response.volume
-//    pulse_data.value.mute = data.response.mute
-//    if ( debug ) console.log('PA changed; volume:', data.response.volume)
-//    if ( debug ) console.log('PA changed; mute:', data.response.mute)
-//  }
-//
-//  if (data.player && data.current) {
-//    const last = lastFile.value
-//    const newFile = data.current.file
-//
-//    status.value = { player: data.player }
-//    current.value = data.current
-//    next.value = data.next
-//    linger.value = data.linger
-////  pulse_data.value = data.pulse_data
-//    pulse_data.value = { ...data.pulse_data }
-////  if ( debug ) console.log('[TEST pulse_data]', data.pulse_data?.volume)
-//    pauseTimer.value = data.pause_timer
-//    if ( debug ) {
-//      console.log('[DEBUG App] data.pause_timer:', data.pause_timer)
-//      console.log('[DEBUG App] pauseTimer.value:', pauseTimer.value)
-//    }
-//    if ( debug ) {
-//      console.log('[DEBUG App] pause timer:', {
-//        'data.pause_timer': data.pause_timer,
-//        'pauseTimer.value': pauseTimer.value
-//      })
-//    }
-//    updatePauseTimer(data.pause_timer)
-//
-//    let albumKey
-//    const cur = data.current
-//    const lgr = data.linger
-//
-//    if (cur.musicbrainz_albumid) {
-//      albumKey = cur.musicbrainz_albumid
-//    } else if (newFile) {
-//      const parts = newFile.split('/')
-//      albumKey = parts.slice(0, -1).join('/')
-//    } else if (cur.album && cur.albumartist) {
-//      albumKey = `${cur.albumartist} -- ${cur.album}`
-//    } else if (lgr?.songid) {
-//      albumKey = lgr.songid
-//    } else {
-//      albumKey = newFile
-//    }
-//
-//    if (albumKey !== lastAlbumKey.value) {
-//      lastAlbumKey.value = albumKey
-//      if (last) {
-//        console.log('Album changed, refreshing art for:', newFile)
-//        refreshAlbumArt(newFile)
-//      }
-//    }
-//
-//    // Track change logging + request log
-//    if (newFile && newFile !== last) {
-//      console.log('Track changed:', newFile)
-//      lastFile.value = newFile
-//      if (initialLoadDone) {  // <-- only request log after first load
-//        requestLog()
-//      } else {
-//        initialLoadDone = true
-//      }
-//    }
-//  }
-//
-//  // inside handleWebSocketMessage, after parsing `data`
-//  if (Array.isArray(data) && data.length > 0 && data[0].timestamps && data[0].action) {
-//    // treat it like a batch of log entries
-//    logEntries.value = data.slice(0, logLines.value)  // keep the first N entries
-//    return
-//  }
-//
-//  if (data.timestamps && data.action) {
-//    // Add to buffer instead of pushing immediately
-//    logBuffer.push(data)
-//
-//    if (!logFlushTimer) {
-//      logFlushTimer = setTimeout(() => {
-//        logEntries.value.push(...logBuffer)
-//        if (logEntries.value.length > logLines.value) {
-//          logEntries.value = logEntries.value.slice(0, logLines.value)
-//        }
-//        logBuffer.length = 0
-//        logFlushTimer = null
-//      }, 50) // 50ms is small enough to be imperceptible
-//    }
-//  }
-//}
-
-
 const handleWebSocketMessage = async (event) => {
   const raw = event.data
 
   if ( debug ) {
-    console.log('[WS RAW TYPE]', typeof raw)
-    console.log('[WS RAW HEAD]', raw.slice(0, 80))
+    // console.log('[WS RAW TYPE]', typeof raw)
+    // console.log('[WS RAW HEAD]', raw.slice(0, 80))
   }
 
   // ----------------------------
@@ -792,63 +715,6 @@ const handleWebSocketMessage = async (event) => {
   // 3. OBJECT PAYLOAD
   // ----------------------------
   if (data && typeof data === 'object') {
-
-//    // ----------------------------
-//    // SUBSCRIBE RESPONSE ROUTER
-//    // ----------------------------
-//    if (data.system === 'websocket' && data.cmd === 'subscribe') {
-//
-//      const r = data.response
-//
-//      // ---- status payload (has player/current/next)
-//      if (r && r.player && r.current) {
-//        status.value = { player: r.player }
-//        current.value = r.current
-//        next.value = r.next
-//        linger.value = r.linger
-//        pulse_data.value = { ...r.pulse_data }
-//        pauseTimer.value = r.pause_timer
-//
-//        updatePauseTimer(r.pause_timer)
-//
-//        console.log('[SUBSCRIBE] status applied')
-//        return
-//      }
-//
-//      // ---- log payload (timestamps)
-//      if (Array.isArray(r) && r.length && r[0]?.timestamps) {
-//        logEntries.value = r.slice(0, logLines.value)
-//        console.log('[SUBSCRIBE] logs applied:', r.length)
-//        return
-//      }
-//
-//      if (r && r.timestamps && r.action) {
-//        logBuffer.push(r)
-//
-//        if (!logFlushTimer) {
-//          logFlushTimer = setTimeout(() => {
-//            logEntries.value.push(...logBuffer)
-//            logBuffer.length = 0
-//            logFlushTimer = null
-//          }, 50)
-//        }
-//
-//        return
-//      }
-//
-//      // ---- artwork metadata payload
-//      if (r && r.hash && r.mime && r.size) {
-//        console.log('[SUBSCRIBE] artwork meta:', r)
-//
-//        // optional hook for AlbumArt.vue / ArtworkView.vue
-//        window.__lastArtMeta = r
-//
-//        return
-//      }
-//
-//      console.warn('[SUBSCRIBE] unhandled subscribe response:', data)
-//      return
-//    }
 
 // -------------------------------
 // SUBSCRIBE RESPONSE ROUTER
@@ -888,44 +754,75 @@ if (
       data.response[0]?.timestamps &&
       data.response[0]?.action
 
-    if (looksLikeLogs) {
+    if (looksLikeLogs || data.cmd === "json-log") {
       console.log("[SUBSCRIBE] log batch:", data.response.length)
       logEntries.value = data.response.slice(0, logLines.value)
       return
     }
   }
 
-  // 4. ARTWORK META (NO BLOB HERE)
-  if (data.response && data.response.hash) {
-    console.log("[SUBSCRIBE] artwork meta:", data.response)
+//  // 4. ARTWORK META (NO BLOB HERE)
+//  if (data.response && data.response.hash) {
+//    console.log("[SUBSCRIBE] artwork meta:", data.response)
+//
+//    // store meta only
+//    albumArtMeta.value = {
+//      hash: data.response.hash,
+//      mime: data.response.mime,
+//      size: data.response.size,
+//      width: data.response.width,
+//      height: data.response.height
+//    }
+//
+//    return
+//  }
 
-    // store meta only
-    albumArtMeta.value = {
-      hash: data.response.hash,
-      mime: data.response.mime,
-      size: data.response.size,
-      width: data.response.width,
-      height: data.response.height
+  if (data.response && data.response.hash) {
+    const r = data.response
+
+    art.hash = r.hash
+    art.note = r.note
+
+    // HARD RESET
+    if (r.note === "noart") {
+      art.hash = null
+      art.pending = null
+      albumArtData.value = null
+      return
+    }
+
+    if (r.note === "update") {
+      art.pending = r.hash
+      return
+    }
+
+    if (r.note === "noop") {
+      if (art.hash && art.hash !== r.hash) {
+        requestAlbumArt(current.value?.file)
+      }
+      return
     }
 
     return
   }
+
 }
-// -------------------------------
-// BINARY FRAME (album art blob)
-// -------------------------------
-if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
-  console.log("[WS] binary frame received (album art)")
-
-  albumArtBlob.value = event.data
-
-  // optional: immediate render hook
-  // refreshAlbumArtFromBlob(event.data)
-
-  return
-}
+//// -------------------------------
+//// BINARY FRAME (album art blob)
+//// -------------------------------
+//if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
+//  console.log("[WS] binary frame received (album art)")
+//
+//  albumArtBlob.value = event.data
+//
+//  // optional: immediate render hook
+//  // refreshAlbumArtFromBlob(event.data)
+//
+//  return
+//}
     // ---- log batch (json-log)
     if (data.cmd === 'json-log' && Array.isArray(data.response)) {
+      if (debug) console.log('---- log batch (json-log) recieved')
       logEntries.value = data.response.slice(0, logLines.value)
       return
     }
@@ -1024,10 +921,14 @@ if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
         albumKey = newFile
       }
 
-      if (albumKey !== lastAlbumKey.value) {
-        lastAlbumKey.value = albumKey
-        if (last) refreshAlbumArt(newFile)
-      }
+// why is this albumkey and not hash?!?!
+// THIS FORCES A PULL OF ARTWORK AT STARTUP AND ALBUMKEY IS NOT HOW WE SHOULD BE TRACKING NOW!
+
+if (albumKey !== lastAlbumKey.value) {
+  lastAlbumKey.value = albumKey
+  refreshAlbumArt(newFile)
+}
+
 
       if (newFile && newFile !== last) {
         lastFile.value = newFile
@@ -1331,9 +1232,24 @@ const goTop = () => {
 // 4. and so now it's coded to get the currentsong's file and use that in c.ReadPicture
 // 5. and there's no fallback to the other picture method, artwhatever.
 
-const refreshAlbumArt = (file = current.value.file) => {
-  if ( debug ) console.log('[DEBUG App] current.value.file: ', current.value.file)
-  logAndSend(JSON.stringify({ system: 'mpd', cmd: 'albumart', args: current.value.file }))
+//const refreshAlbumArt = (file = current.value.file) => {
+//  if ( debug ) console.log('[DEBUG App] current.value.file: ', current.value.file)
+//  logAndSend(JSON.stringify({ system: 'mpd', cmd: 'albumart', args: current.value.file }))
+//}
+
+const refreshAlbumArt = (file = null) => {
+  const target = file || current.value?.file
+  if (!target) return
+
+  if (debug) console.log('[DEBUG App] refreshAlbumArt target:', target)
+
+  logAndSend(
+    JSON.stringify({
+      system: 'mpd',
+      cmd: 'albumart',
+      args: target
+    })
+  )
 }
 
 // Unified keydown handler
@@ -1369,7 +1285,6 @@ const handleKeydown = (ev) => {
     ev.preventDefault()
     showPanel.value = !showPanel.value
   }
-
   // Alt+D → turn debug true
   if (ev.altKey && key === 'd') {
     if ( debug && WS_DEBUG && componentDebug.value) {
@@ -1438,7 +1353,7 @@ if ( debug ) {
 }
 
 onMounted(() => {
-  connectWebSocket()
+  connectWebSocketRouter()
   document.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener('focus', handleFocus)
 //  window.addEventListener('scroll', handleScroll)
