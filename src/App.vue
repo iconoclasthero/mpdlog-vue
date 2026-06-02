@@ -924,10 +924,10 @@ if (
 // why is this albumkey and not hash?!?!
 // THIS FORCES A PULL OF ARTWORK AT STARTUP AND ALBUMKEY IS NOT HOW WE SHOULD BE TRACKING NOW!
 
-if (albumKey !== lastAlbumKey.value) {
-  lastAlbumKey.value = albumKey
-  refreshAlbumArt(newFile)
-}
+//if (albumKey !== lastAlbumKey.value) {
+//  lastAlbumKey.value = albumKey
+//  refreshAlbumArt(newFile)
+//}
 
 
       if (newFile && newFile !== last) {
