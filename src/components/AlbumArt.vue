@@ -161,9 +161,9 @@ const checkSize = (ev) => {
     img.naturalHeight
   )
 
-  if (
+  if ( false && (
     img.naturalWidth <= 500 ||
-    img.naturalHeight <= 500
+    img.naturalHeight <= 500 )
   ) {
     console.log('[ART] below threshold')
     emit('action', 'fix_art')
