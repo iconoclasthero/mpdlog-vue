@@ -1123,7 +1123,7 @@ const handleAction = (action) => {
 //      pause_timer_off: JSON.stringify({ system:'pause_timer', cmd:'off' }),
     linger_next:      JSON.stringify({ system:'linger',      cmd:'next'                       }),
     linger_start:     'linger-start',
-    linger_toggle:    'toggle',
+    linger_toggle:    JSON.stringify({ system:'linger',      cmd:'toggle'                     }),
     toggle_output:    'toggle-output',
     json_status:      'json-status'
   }
