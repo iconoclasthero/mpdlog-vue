@@ -725,15 +725,17 @@ if (
 (data.cmd === "subscribe" || data.cmd === "json-status" )
 ) {
 
+  let subscribe = "SUBSCRIBED"
+  if (data.system === "websocket") subscribe = "SUBSCRIBE"
   // 1. SUBSCRIBE ACK
   if (data.response === "subscribed") {
-    console.log("[SUBSCRIBE] confirmed")
+    console.log("[", subscribe, "] confirmed")
     return
   }
 
   // 2. STATUS UPDATE (player / current / next)
   if (data.response && data.response.player && data.response.current) {
-    console.log("[SUBSCRIBE] status frame")
+    console.log("[", subscribe, "] status frame")
 
     status.value = { player: data.response.player }
     current.value = data.response.current
