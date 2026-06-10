@@ -127,15 +127,16 @@ const imgStyle = computed(() => ({
 }))
 
 if (debug) console.log('imgStyle', imgStyle)
-console.log('props.current.file: ', props.current.file)
+if (debug) console.log('props.current.file: ', props.current.file)
 const coverSearchURL = computed(() => {
   const coverSearchParams = new URLSearchParams({
-    album: props.current.album,
+    album: props.current.album?.replace(/ \(mp3\)\s*$/, ''),
     artist: props.current.albumartist
   });
-
-  return 'https://covers.musichoarders.xyz?' + coverSearchParams.toString()
-  console.log('coverSearchURL', coverSearchURL)
+  const coverSearchURL = 'https://covers.musichoarders.xyz?' + coverSearchParams.toString()
+//  console.log('coverSearchURL', coverSearchURL)
+  if (debug) console.log('coverSearchURL', coverSearchURL)
+  return coverSearchURL
 });
 
 const handleClick = (ev) => {

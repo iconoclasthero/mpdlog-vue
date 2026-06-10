@@ -524,11 +524,11 @@ const handleBlob = async (rawData, msg = null) => {
 //      art.pending = String(r.hash)
       const newHash = String(r.hash)
       const oldHash = art.hash || art.pending
-
+      console.log('oldHash=', oldHash, 'AFTER')
       // ----------------------------
       // UI INVALIDATION (IMPORTANT)
       // ----------------------------
-      if (msg.note === 'update' || (oldHash && oldHash !== newHash)) {
+      if (msg.note === 'update' && (oldHash && oldHash !== newHash)) {
         albumArtData.value = null
       }
 
@@ -794,7 +794,9 @@ if (
     }
 
     if (r.note === "update") {
+      console.log('BEFORE art.pending=', art.pending)
       art.pending = r.hash
+      console.log('AFTER art.pending=', art.pending)
       return
     }
 
