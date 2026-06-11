@@ -18,6 +18,7 @@
       :duration="status.player.duration"
       :color="ringColor"
       :playing="status.player.state==='play'"
+      :playerStatusUpdate="playerStatusUpdate"
       img-src="/android-icon-96x96.png"
       @seek="seekTo"
       @action="handleAction"
@@ -89,6 +90,7 @@
       :pauseTimer="pauseTimer"
       :pauseTimerRem="pauseTimerRem"
       :pauseTimerDisp="sec2sex(pauseTimerRem)"
+      :playerStatusUpdate="playerStatusUpdate"
       :send-command="sendWebSocketCommand"
       :showPath="showPath"
       @toggleControlPanel="showPanel = !showPanel"
@@ -279,12 +281,13 @@ const playlistCurrentN = ref(12)   // the +/- around current playlist so that nu
 const playlistCurrentSongs = ref([])
 const playlistAlbumSongs = ref([])
 const logLinesDefault = 24
-const pauseTimer = ref(null)
-const pauseTimerRem = ref(0)    // live countdown (seconds)
-const pauseTimerMin = ref(0)
 const menuLeft = ref(20)
-const albumArtMeta = ref(null)
 let pauseInt = null
+const pauseTimer = ref(null)
+const pauseTimerMin = ref(0)
+const pauseTimerRem = ref(0)    // live countdown (seconds)
+const playerStatusUpdate = ref(0)
+const albumArtMeta = ref(null)
 const logLines = ref(logLinesDefault)
 let logFlushTimer = null
 // NEW FLAG TO PREVENT INITIAL LOG REQUEST
@@ -738,6 +741,11 @@ if (
     console.log("[", subscribe, "] status frame")
 
     status.value = { player: data.response.player }
+
+    // playerStatusUpdate must be executed for **every** valid player snapshot, not only when values differ.
+    // this is required for the progress circle and elapsed timer to update properly.
+    playerStatusUpdate.value = Date.now()
+    console.log("[App] playerStatusUpdate:", playerStatusUpdate.value)
     current.value = data.response.current
     next.value = data.response.next
     linger.value = data.response.linger

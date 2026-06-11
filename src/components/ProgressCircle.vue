@@ -27,6 +27,7 @@ import { ref, watch, computed, onMounted, onUnmounted, inject, watchEffect } fro
 
 const props = defineProps({
   elapsed: { type: Number, required: true },
+  playerStatusUpdate: { type: Number, required: true },
   duration: { type: Number, required: true },
   imgSrc: { type: String, default: "/android-icon-96x96.png" },
   color: { type: String, default: "#3b82f6" },
@@ -107,7 +108,15 @@ const arcPath = computed(() => {
 if ( debug ) console.log('[DEBUG ProgressCircle] ( • )( • )----ԅ(‾⌣‾ԅ) 2!')
 
 
-// Update localElapsed when props change
+// Update localElapsed when props change (timestamp of response.player status or elapsed)
+watch(
+  () => props.playerStatusUpdate,
+  () => {
+    localElapsed.value = props.elapsed
+  },
+  { immediate: true }
+)
+
 watch(
   () => props.elapsed,
   (v) => { localElapsed.value = v },

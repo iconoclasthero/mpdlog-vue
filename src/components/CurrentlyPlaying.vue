@@ -292,6 +292,7 @@ watchEffect(() => {
 })
 
 const props = defineProps({
+  playerStatusUpdate: { type: Number, required: true },
   status: Object,
   current: Object,
   next: Object,
@@ -466,6 +467,15 @@ if ( debug ) {
   console.log('[DEBUG CurrentlyPlaying] props.pauseTimerDisp', props.pauseTimerDisp)
   console.log('[DEBUG CurrentlyPlaying] props.pulse_data', props.pulse_data.mute)
 }
+
+watch(
+  () => props.playerStatusUpdate,
+  () => {
+    const v = props.status?.player?.elapsed
+    if (v !== undefined) elapsed.value = v
+  },
+  { immediate: true },
+)
 
 watch(
   () => props.status?.player?.elapsed,
