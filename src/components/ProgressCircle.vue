@@ -110,10 +110,7 @@ if ( debug ) console.log('[DEBUG ProgressCircle] ( • )( • )----ԅ(‾⌣‾�
 // Update localElapsed when props change
 watch(
   () => props.elapsed,
-  (v) => {
-    console.log('[PC WATCH]', props.elapsed, '->', v,
-                'local was', localElapsed.value)
-    localElapsed.value = v },
+  (v) => { localElapsed.value = v },
   { immediate: true }
 )
 

@@ -738,11 +738,6 @@ if (
     console.log("[", subscribe, "] status frame")
 
     status.value = { player: data.response.player }
-console.log(
-  "[STATUS APPLIED]",
-  status.value.player.elapsed,
-  status.value.player.songID
-)
     current.value = data.response.current
     next.value = data.response.next
     linger.value = data.response.linger
