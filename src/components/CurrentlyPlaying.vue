@@ -445,11 +445,21 @@ const totalDisplay = computed(() =>
   sec2sex(props.status?.player?.duration || 0)
 )
 
-const percentDisplay = computed(() =>
-  Math.floor(
-    (elapsed.value / (props.status?.player?.duration || 1)) * 100
-  )
-)
+//const percentDisplay = computed(() =>
+//  Math.floor(
+//    (elapsed.value / (props.status?.player?.duration || 1)) * 100
+//  )
+//)
+
+const percentDisplay = computed(() => {
+  const duration = props.status?.player?.duration
+
+  if (duration > 0) {
+    return Math.floor((elapsed.value / duration) * 100)
+  }
+
+  return "—"
+})
 
 const percentValue = computed(() => percentDisplay.value)
 
@@ -496,7 +506,7 @@ watch(
     if (state === 'play') {
       timerInterval.value = setInterval(() => {
         const dur = props.status?.player?.duration || 0
-        if (elapsed.value < dur) elapsed.value++
+        if (elapsed.value < dur || dur === 0) elapsed.value++
       }, 1000)
     }
   },
@@ -511,8 +521,8 @@ watch(
   () => [elapsed.value, props.status?.player?.duration],
   ([e, d]) => {
     if (!d) return
-    if (d > 0 && e > d * 1.05 ) {
-      console.log('[WARN CurrentlyPlaying] elapsed > duration * 1.05'),
+    if (d > 0 && e > d * 1.1 ) {
+      console.log('[WARN CurrentlyPlaying] elapsed > duration * 1.1 → refresh json_status'),
       emit('action', 'json-status')
     }
   }

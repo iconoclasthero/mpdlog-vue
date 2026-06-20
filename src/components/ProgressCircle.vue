@@ -1,5 +1,5 @@
 <template>
-  <div class="circle-container" v-if="duration > 0">
+  <div class="circle-container">
     <svg class="progress-ring" width="120" height="120" @click="handleClick" style="cursor:pointer">
       <circle
         class="progress-ring__background"
@@ -10,16 +10,17 @@
         cx="60"
         cy="60"
       />
-<path
-  class="progress-ring__circle"
-  :stroke="color"
-  stroke-width="16"
-  fill="transparent"
-  :d="arcPath"
-/>
+      <path
+        class="progress-ring__circle"
+        :stroke="color"
+        stroke-width="16"
+        fill="transparent"
+        :d="arcPath"
+      />
     </svg>
     <img :src="imgSrc" class="center-image" />
   </div>
+
 </template>
 
 <script setup>
@@ -59,9 +60,21 @@ const arcPath = computed(() => {
   const cy = 60
   const r = radius
 
+/* Removed in favor of a full circle below.
 // use an arbitrarily large donimnator so we always return a percent
 // which could be erroniously small in the case of no duration
   const percent = localElapsed.value / ( props.duration || 3600 )
+*/
+
+// If props.duration <= 0 then display a full circle
+// Not sure about how a negative duration occurs, but 0 durations from e.g.,
+// archive.org streams
+
+const percent =
+  props.duration > 0
+    ? localElapsed.value / props.duration
+    : 0.99999
+
   let theta = percent * 2 * Math.PI
 
 // Clamp theta to a sufficiently small number such that it is 0.01% * 2 * pi
@@ -168,7 +181,6 @@ watch(
           if ( debug ) console.log('[DEBUG ProgressCircle]',
                                     localElapsed.value,
                                    'exceeded duration * 1.1 → refresh json_status')
-//          emit('refresh-status')
           emit('action', 'json_status')
         }
       }, 1000)
