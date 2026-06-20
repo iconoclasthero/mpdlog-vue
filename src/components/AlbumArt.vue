@@ -47,7 +47,7 @@
     </a>
     <a href="#"
       class="cover-zoom-button"
-      @click="$epit('action', 'zoom')"
+      @click.prevent="zoomed = !zoomed"
       title="Zoom image"
     >🔍</a>
 

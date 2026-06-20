@@ -164,7 +164,7 @@ watch(
     if (isPlaying) {
       timer = setInterval(() => {
         localElapsed.value += 1
-        if (localElapsed.value > props.duration * 1.1) {
+        if (props.duration > 0 && localElapsed.value > props.duration * 1.1) {
           if ( debug ) console.log('[DEBUG ProgressCircle]',
                                     localElapsed.value,
                                    'exceeded duration * 1.1 → refresh json_status')

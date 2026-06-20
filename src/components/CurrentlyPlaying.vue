@@ -511,7 +511,7 @@ watch(
   () => [elapsed.value, props.status?.player?.duration],
   ([e, d]) => {
     if (!d) return
-    if (e > d * 1.05 ) {
+    if (d > 0 && e > d * 1.05 ) {
       console.log('[WARN CurrentlyPlaying] elapsed > duration * 1.05'),
       emit('action', 'json-status')
     }
