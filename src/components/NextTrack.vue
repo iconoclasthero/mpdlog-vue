@@ -6,11 +6,18 @@
         ✨</em><a href="#" @click.prevent="$emit('action', 'next_track')" title="Play next song">
           Next in queue
         </a><em>✨</em></strong>&nbsp;
-<!--      <a href="#" @click.prevent="$emit('action', 'playlist_current')" title="Playlist|current song"> -->
-        <a href="#" @click.prevent="$emit('action', { type: 'playlist_current', n: null })" title="Playlist|current song">
-
-        <i class="bi bi-box-arrow-up-right extlink"></i>
-      </a>
+        <a v-if="viewMode !== 'current'"
+          href="#" @click.prevent="$emit('action', { type: 'playlist_current', n: null })" title="Playlist|current song"
+          style="color: white;"
+        >
+          <i class="bi bi-box-arrow-up-right extlink"></i>
+        </a>
+        <a v-else
+          href="#" @click.prevent="$emit('change-view', 'default')" title="Playlist|return"
+          style="color: white; font-style: normal; vertical-align: super; font-size: 0.8em; line-height: 1;"
+        >
+        <i class="bi bi-arrow-return-left"></i>
+        </a>
     </span>
     <br>
     <strong class="song"><em>
@@ -37,11 +44,6 @@
       </em></strong>
     </span>
     <br>
-<!--    <span v-if="showPath" class="album file-path">
-      {{ next.file }}
-    </span>
-    <br v-if="showPath">
--->
     <div v-if="showPath" class="album file-path">
     <span style="text-decoration: none; display: inline-block;">
     <a :href="'mpdlog://open?path=' + encodeURIComponent(next.file)">
@@ -60,9 +62,10 @@ export default {
   name: 'NextTrack',
   props: {
     next: Object,
-    showPath: Boolean
+    showPath: Boolean,
+    viewMode: String,
   },
-  emits: ['action'],
+  emits: ['action', 'change-view'],
   setup(props) {
     const disc = computed(() => {
       return String(props.next?.disc || '0').padStart(2, '0')

@@ -6,33 +6,33 @@
       <div class="button-row d-flex gap-2 align-items-center">
         <form id="controlForm1">
           <h5 style="margin-bottom: 10px;">MPD controls:</h5>
-          <button type="button" 
-                  @click="$emit('action', 'toggle_playback')" 
-                  class="btn btn-primary" 
+          <button type="button"
+                  @click="$emit('action', 'toggle_playback')"
+                  class="btn btn-primary"
                   title="Toggle playback">
             ⏯️
           </button>
-          <button type="button" 
-                  @click="$emit('action', 'next_track')" 
-                  class="btn btn-primary" 
+          <button type="button"
+                  @click="$emit('action', 'next_track')"
+                  class="btn btn-primary"
                   title="Next track">
             ⏭️
           </button>
-          <button v-if="!playerState?.random" 
-                  type="button" 
-                  @click="$emit('action', 'enable_random')" 
-                  class="btn btn-info" 
+          <button v-if="!playerState?.random"
+                  type="button"
+                  @click="$emit('action', 'enable_random')"
+                  class="btn btn-info"
                   title="Enable random">
             ✅ 🔀
           </button>
-          <button v-else 
-                  type="button" 
-                  @click="$emit('action', 'disable_random')" 
-                  class="btn btn-info" 
+          <button v-else
+                  type="button"
+                  @click="$emit('action', 'disable_random')"
+                  class="btn btn-info"
                   title="Disable random">
             ❌ 🔀
           </button>
-          <button type="button" 
+          <button type="button"
                   @click="$emit('action', 'ignore')"
                   class="btn btn-outline-danger"
                   title="Ignore this item">
@@ -137,6 +137,13 @@
             🔍
           </button>
           <button v-else
+                  type="button"
+                  @click="$emit('change-view', 'default')"
+                  class="btn btn-danger"
+                  title="Return">
+            ↩️
+          </button>
+          <button v-if="viewMode === 'current' || viewMode === 'album'"
                   type="button"
                   @click="$emit('change-view', 'default')"
                   class="btn btn-danger"

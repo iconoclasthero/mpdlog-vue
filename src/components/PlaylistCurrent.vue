@@ -43,7 +43,7 @@ export default {
   props: {
     songs: { type: Array, required: true },
     currentPosition: Number,
-    songID: { type: Number, required: true },
+    songID: { type: Number, default: 0 },
     playlistCurrentN: { type: Number, required: true },
     showPath: Boolean
   },
@@ -63,7 +63,7 @@ export default {
 
     // Group songs by album
     const groupedSongs = computed(() => {
-       if ( debug ) console.log('[DEBUG PlaylistCurrent] Computing groupedSongs for', props.songs.length, 'songs')
+      if ( debug ) console.log('[DEBUG PlaylistCurrent] Computing groupedSongs for', props.songs.length, 'songs')
       const groups = []
       let lastAlbum = null
       let currentGroup = null
@@ -77,39 +77,45 @@ export default {
         currentGroup.songs.push(song)
       })
 
-       if ( debug ) console.log('[DEBUG PlaylistCurrent] GroupedSongs computed:', groups)
+      if ( debug ) console.log('[DEBUG PlaylistCurrent] GroupedSongs computed:', groups)
       return groups
     })
 
     const request = () => {
-       if ( debug ) console.log('[DEBUG PlaylistCurrent] Requesting playlist_current n=', props.playlistCurrentN)
+      if ( debug ) console.log('[DEBUG PlaylistCurrent] const request: Requesting playlist_current n=', props.playlistCurrentN)
+      console.log('[PlaylistCurrent] const request: Requesting playlist_current n=', props.playlistCurrentN)
       emit('action', {
         type: 'playlist_current',
         n: props.playlistCurrentN
       })
     }
 
+    let off = null
+
     onMounted(() => {
        if ( debug ) console.log('[DEBUG PlaylistCurrent] Mounted')
-      request()
+      // request() // this is being done by App.vue
 
-      resultBus?.on('playlistChanged', () => {
-         if ( debug ) console.log('[DEBUG PlaylistCurrent] playlistChanged → refreshing playlist_current')
+      off = resultBus?.on('playlistChanged', () => {
+        if ( debug ) console.log('[DEBUG PlaylistCurrent] onMounted: playlistChanged → refreshing playlist_current')
+        console.log('[PlaylistCurrent] onMounted: playlistChanged → refreshing playlist_current')
         request()
       })
     })
 
-    // maybe need later?  keep uncommented f/now?
-    const off = resultBus.on('playlistChanged', () => {
-      request()
-    })
+//    // maybe need later?  keep uncommented f/now?
+//    const off = resultBus.on('playlistChanged', () => {
+//      console.log('    const off = resultBus.on(\'playlistChanged\', () => {')
+//      request()
+//    })
 
-    onUnmounted(() => off())
+    onUnmounted(() => off && off())
 
     watch(
       () => props.currentPosition,
       (newVal, oldVal) => {
-         if ( debug ) console.log('[DEBUG PlaylistCurrent] currentPosition changed from', oldVal, 'to', newVal)
+        if ( debug ) console.log('[DEBUG PlaylistCurrent] currentPosition changed from', oldVal, 'to', newVal)
+        console.log('[PlaylistCurrent] currentPosition changed from', oldVal, 'to', newVal)
         if (newVal !== oldVal) request()
       }
     )
@@ -117,22 +123,23 @@ export default {
     watch(
       () => props.songs,
       (newSongs, oldSongs) => {
-         if ( debug ) console.log('[DEBUG PlaylistCurrent] songs prop changed', oldSongs?.length, '->', newSongs?.length)
+        if ( debug ) console.log('[DEBUG PlaylistCurrent] songs prop changed', oldSongs?.length, '->', newSongs?.length)
       },
       { deep: true }
     )
 
-    watch(
-      () => props.songID,
-      (newID, oldID) => {
-         if ( debug ) console.log('[DEBUG PlaylistCurrent] songID changed from', oldID, 'to', newID)
-        request()  // ask for new playlist_current JSON
-      }
-    )
+//    watch(
+//      () => props.songID,
+//      (newID, oldID) => {
+//        if ( debug ) console.log('[DEBUG PlaylistCurrent] songID changed from', oldID, 'to', newID)
+//        console.log('[DEBUG PlaylistCurrent] songID changed from', oldID, 'to', newID)
+//        request()  // ask for new playlist_current JSON
+//      }
+//    )
 
 
     const playSong = (pos) => {
-       if ( debug ) console.log('[DEBUG PlaylistCurrent] playSong called with pos', pos)
+      if ( debug ) console.log('[DEBUG PlaylistCurrent] playSong called with pos', pos)
       emit('action', { type: 'playPosition', pos })
     }
 

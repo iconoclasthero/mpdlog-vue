@@ -12,7 +12,7 @@
       </a>&nbsp;
         <a class="skipend" href="#" @click.prevent="$emit('action', 'prev_track')">▮◀ </a> &nbsp; &nbsp;  &nbsp; <!-- &nbsp; &nbsp; -->
         <a :class="colorClass" href="#" @click.prevent="$emit('action', { type: 'playlist_current', n: null })"
-         title="Playlist|current song">#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}</a> &nbsp;
+         title="Playlist|current song">#{{ player.song_position || '?' }}/{{ player.song_length || '?' }}</a> &nbsp;
         <a class="skipend" href="#" @click.prevent="$emit('action', 'next_track')">▶▮</a>
     </span>
 
@@ -27,7 +27,7 @@
         <span :class="altClass">{{ toggleIcon }}</span>
       </a> &nbsp;&nbsp;&nbsp;
       <a :class="colorClass" href="#" @click.prevent="$emit('action', 'playlist_current')" title="Playlist|current song">
-        &nbsp#{{ status.player.song_position || '?' }}/{{ status.player.song_length || '?' }}
+        &nbsp#{{ player.song_position || '?' }}/{{ player.song_length || '?' }}
       </a>
       <a href="#" @click.prevent="$emit('action', 'prev_track')" style="position:absolute">&nbsp; ⏮ &nbsp;</a>
       &nbsp; &nbsp; &nbsp;
@@ -71,13 +71,21 @@
         <a :href="`https://musicbrainz.org/release/${current.musicbrainz_albumid}`" target="_blank">
           {{ albumDisplay }}&nbsp
         </a>
-        <a href="#" @click.prevent="$emit('action', { type: 'playlist_album', n: null })" title="Playlist|album">
+      </strong>
+        <a v-if="viewMode !== 'album'"
+          href="#" @click.prevent="$emit('action', { type: 'playlist_album', n: null })" title="Playlist|album"
+        >
           <i class="bi bi-box-arrow-up-right extlink"></i>
         </a>
-      </strong>
+        <a v-else
+          href="#" @click.prevent="$emit('change-view', 'default')" title="Playlist|return"
+          style="font-style: normal; vertical-align: super; font-size: 0.8em; line-height: 1;"
+        >
+        <i class="bi bi-arrow-return-left"></i>
+        </a>
     </span>
     <br>
-
+<!--        ↩️    -->
     <!-- Toggle path display -->
             <div v-if="showPath" class="album file-path">
             <span style="text-decoration: none; display: inline-block;">
@@ -119,11 +127,11 @@
       <span>
         <a href="#"
            class="repeat-toggle" style="font-style:normal"
-           :class="{ active: status.player.repeat }"
+           :class="{ active: player.repeat }"
            @click.prevent="$emit('action', 'toggle_repeat')">⟳ </a>
       </span>
-      <span v-if="status.player.single">single: <span class="smallemoji desktop">{{ singleIcon }}&nbsp;</span></span>
-      <a href="#" @click.prevent="$emit('action', status.player.random ? 'disable_random' : 'enable_random')">random:</a>
+      <span v-if="player.single">single: <span class="smallemoji desktop">{{ singleIcon }}&nbsp;</span></span>
+      <a href="#" @click.prevent="$emit('action', player.random ? 'disable_random' : 'enable_random')">random:</a>
       <span class="smallemoji desktop">{{ randomIcon }} &nbsp;</span>
 
       <a href="#" @click.prevent="$emit('action', 'toggle_consume')">consume:</a>
@@ -216,12 +224,12 @@
       <span>
         <a href="#"
            class="repeat-toggle" style="font-style:normal; text-shadow:0 0 1px currentColor"
-           :class="{ active: status.player.repeat }"
+           :class="{ active: player.repeat }"
            @click.prevent="$emit('action', 'toggle_repeat')">⟳</a>&nbsp;</span>
 
 
       <a href="#" @click.prevent="$emit('action', 'toggle_single')">
-      <span v-if="status.player.single" class="smallemoji mobile">{{ singleIcon }} &nbsp;</span></a>
+      <span v-if="player.single" class="smallemoji mobile">{{ singleIcon }} &nbsp;</span></a>
       <a href="#" @click.prevent="$emit('action', 'toggle_random')">random:</a>
       <span class="smallemoji mobile">{{ randomIcon }}</span>
       <a href="#" @click.prevent="$emit('action', 'toggle_consume')">
@@ -293,7 +301,7 @@ watchEffect(() => {
 
 const props = defineProps({
   playerStatusUpdate: { type: Number, required: true },
-  status: Object,
+  player: Object,
   current: Object,
   next: Object,
   linger: Object,
@@ -302,6 +310,7 @@ const props = defineProps({
   pauseTimer: Object,
   pauseTimerRem: Number,
   pauseTimerDisp: String,
+  viewMode: String,
 })
 
 /*------- volume shit -------*/
@@ -385,25 +394,25 @@ const onVolInput = (e) => {
 /*--------------------------*/
 
 
-const emit = defineEmits(['action', 'toggleControlPanel'])
+const emit = defineEmits(['action', 'toggleControlPanel', 'change-view',])
 
 const elapsed = ref(0)
 const timerInterval = ref(null)
 
 const stateText = computed(() =>
-  props.status?.player?.state === 'play' ? 'playing' : 'paused'
+  props.player?.state === 'play' ? 'playing' : 'paused'
 )
 
 const colorClass = computed(() =>
-  props.status?.player?.state === 'play' ? 'playing' : 'artist'
+  props.player?.state === 'play' ? 'playing' : 'artist'
 )
 
 const altClass = computed(() =>
-  props.status?.player?.state === 'play' ? 'artist' : 'playing'
+  props.player?.state === 'play' ? 'artist' : 'playing'
 )
 
 const toggleIcon = computed(() =>
-  props.status?.player?.state === 'play' ? '▮▮' : '▶'
+  props.player?.state === 'play' ? '▮▮' : '▶'
 )
 
 const disc = computed(() =>
@@ -425,16 +434,15 @@ const layout = inject('layout')
 
 const repeatIcon = computed(() => '⟳ ')
 const singleIcon = computed(() =>
-//  props.status?.player?.single ? '✅' : ''
-  props.status?.player?.single ? '1️⃣' : ''
+  props.player?.single ? '1️⃣' : ''
 )
 
 const randomIcon = computed(() =>
-  props.status?.player?.random ? ' ✅' : ' ❌'
+  props.player?.random ? ' ✅' : ' ❌'
 )
 
 const consumeIcon = computed(() =>
-  props.status?.player?.consume ? ' ✅' : ' ❌'
+  props.player?.consume ? ' ✅' : ' ❌'
 )
 
 const elapsedDisplay = computed(() =>
@@ -442,17 +450,11 @@ const elapsedDisplay = computed(() =>
 )
 
 const totalDisplay = computed(() =>
-  sec2sex(props.status?.player?.duration || 0)
+  sec2sex(props.player?.duration || 0)
 )
 
-//const percentDisplay = computed(() =>
-//  Math.floor(
-//    (elapsed.value / (props.status?.player?.duration || 1)) * 100
-//  )
-//)
-
 const percentDisplay = computed(() => {
-  const duration = props.status?.player?.duration
+  const duration = props.player?.duration
 
   if (duration > 0) {
     return Math.floor((elapsed.value / duration) * 100)
@@ -481,14 +483,14 @@ if ( debug ) {
 watch(
   () => props.playerStatusUpdate,
   () => {
-    const v = props.status?.player?.elapsed
+    const v = props.player?.elapsed
     if (v !== undefined) elapsed.value = v
   },
   { immediate: true },
 )
 
 watch(
-  () => props.status?.player?.elapsed,
+  () => props.player?.elapsed,
   (v) => {
     if (v !== undefined) elapsed.value = v
   },
@@ -496,7 +498,7 @@ watch(
 )
 
 watch(
-  () => props.status?.player?.state,
+  () => props.player?.state,
   (state) => {
     if (timerInterval.value) {
       clearInterval(timerInterval.value)
@@ -505,7 +507,7 @@ watch(
 
     if (state === 'play') {
       timerInterval.value = setInterval(() => {
-        const dur = props.status?.player?.duration || 0
+        const dur = props.player?.duration || 0
         if (elapsed.value < dur || dur === 0) elapsed.value++
       }, 1000)
     }
@@ -518,7 +520,7 @@ watch(() => props.pauseTimerRem, (v) => {
 })
 
 watch(
-  () => [elapsed.value, props.status?.player?.duration],
+  () => [elapsed.value, props.player?.duration],
   ([e, d]) => {
     if (!d) return
     if (d > 0 && e > d * 1.1 ) {

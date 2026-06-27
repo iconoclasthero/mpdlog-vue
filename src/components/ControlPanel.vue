@@ -6,7 +6,6 @@
       style="padding:8px; background:#333; cursor:move; user-select:none;"
     >
       Control Panel
-
     </div>
 
 <!--    <button @click="showDialog = false"
@@ -315,7 +314,7 @@ import { ref, computed, watch, inject } from 'vue'
 const layout = inject('layout')
 
 const props = defineProps({
-  status: Object,
+  player: Object,
   visible: Boolean,
   linger: Object,
   playlistCurrentN: Number,
@@ -573,12 +572,12 @@ function toggleBlocklimit() {
     args: blockEnabled.value ? blocklimit.value : 0
   })
 
-  if (!blockEnabled.value) blocklimit.value = 0
-  console.log('emit action json_status')
-  emit('action', 'json_status')
+//  if (!blockEnabled.value) blocklimit.value = 0
+//  console.log('emit action json_status')
+//  emit('action', 'json_status')
 }
 
-watch(() => props.status?.player?.state, (s) => {
+watch(() => props.player?.state, (s) => {
   if (s === 'play') {
     showResumeModal.value = false
   }

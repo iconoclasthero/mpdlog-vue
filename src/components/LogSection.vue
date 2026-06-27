@@ -24,6 +24,20 @@
         <br>
         <br>
         <a href="#" style="color: crimson;font-weight: bold;" @click.prevent="$emit('action', { type: 'ignore-log-entry', payload: entry.file })" title="Ignore log entry">🚫 Ignore this song... </a>
+        <br>
+<!--
+  const coverSearchParams = new URLSearchParams({
+    album: props.current.album?.replace(/ \(mp3\)\s*$/, ''),
+    artist: props.current.albumartist
+  });
+  const coverSearchURL = 'https://covers.musichoarders.xyz?' + coverSearchParams.toString()
+-->
+        <a :href="`https://covers.musichoarders.xyz?album=${encodeURIComponent(entry.audio.album)}&artist=${encodeURIComponent(entry.audio.artist)}`"
+          style="color: lightblue; font-weight: bold;" target="_blank" title="Search cover art">Search cover art</a>
+      <br>
+
+       <a href="#" @click.prevent="$emit('action', { type: 'add-log-entry-next', payload: entry.file })" title="Enqueue log entry">Enqueue this song next... </a>
+
       </details>
 
         <strong

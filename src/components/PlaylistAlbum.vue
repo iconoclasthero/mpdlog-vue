@@ -15,22 +15,26 @@ const emit = defineEmits(['action'])
 const resultBus = inject('resultBus')
 
 const props = defineProps({
+  plRev: { type: Number, default: null },
   songs: { type: Array, required: true },
-  songID: { type: Number, required: true },
+  songID: { type: Number, default: null },
   currentPosition: { type: Number, default: null },
-  showPath: Boolean
+  showPath: Boolean,
 })
 
-const { songs, songID, currentPosition } = toRefs(props)
+const { songs, songID, currentPosition, plRev } = toRefs(props)
 
 if ( debug ) console.log('[DEBUG PlaylistAlbum] songID', songID)
+
+if ( debug ) console.log('[DEBUG PlaylistAlbum] props.plRev', props.plRev)
 
 const playSong = (pos) => {
   emit('action', { type: 'playPosition', pos })
 }
 
 const request = () => {
-  if ( debug ) console.log('[DEBUG PlaylistAlbum] Requesting playlist_album'),
+  console.log('[PlaylistAlbum] request entered')
+  if ( debug ) console.log('[DEBUG PlaylistAlbum] Requesting playlist_album')
   emit('action', { type: 'playlist_album' })
 }
 
@@ -44,6 +48,7 @@ if ( debug && false) {
   watch(songs, (newVal) => console.log('[DEBUG PlaylistAlbum] songs updated', newVal), { deep: true })
   watch(currentPosition, (newVal) => console.log('[DEBUG PlaylistAlbum] currentPosition changed', newVal))
   watch(songID, (newVal) => { console.log('[DEBUG PlaylistAlbum] SongID changed', newVal), request() })
+  watch(plRev, (newVal) => { console.log('[DEBUG PlaylistAlbum] plRev changed', newVal), request() })
 }
 
 if (debug) {
@@ -51,11 +56,13 @@ if (debug) {
     () => ({
       songs: songs.value,
       pos: currentPosition.value,
-      id: songID.value
+      id: songID.value,
+      plRev: plRev.value,
     }),
     (v) => {
       console.log('[DEBUG PlaylistAlbum]', {
         songs: v.songs,
+        plRev: v.plRev,
         pos: v.pos,
         id: v.id
       })
@@ -68,10 +75,10 @@ if (debug) {
 let off = null
 
 onMounted(() => {
-  request()
+//  request()  // this must be done already in App.vue
 
   off = resultBus?.on('playlistChanged', () => {
-    console.log('[DEBUG PlaylistAlbum] playlistChanged → refreshing playlist_album')
+    if ( debug ) console.log('[DEBUG PlaylistAlbum] playlistChanged → refreshing playlist_album')
     request()
   })
 })
