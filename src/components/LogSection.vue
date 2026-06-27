@@ -23,20 +23,15 @@
         <audio controls preload="none" :src="`/library/music/${entry.url}`"></audio>
         <br>
         <br>
-        <a href="#" style="color: crimson;font-weight: bold;" @click.prevent="$emit('action', { type: 'ignore-log-entry', payload: entry.file })" title="Ignore log entry">🚫 Ignore this song... </a>
+        <a href="#" style="color: crimson;font-weight: bold;" @click.prevent="$emit('action', { type: 'ignore-log-entry', payload: entry.file })" title="Ignore log entry">🚫 Ignore this song </a>
         <br>
-<!--
-  const coverSearchParams = new URLSearchParams({
-    album: props.current.album?.replace(/ \(mp3\)\s*$/, ''),
-    artist: props.current.albumartist
-  });
-  const coverSearchURL = 'https://covers.musichoarders.xyz?' + coverSearchParams.toString()
--->
         <a :href="`https://covers.musichoarders.xyz?album=${encodeURIComponent(entry.audio.album)}&artist=${encodeURIComponent(entry.audio.artist)}`"
-          style="color: lightblue; font-weight: bold;" target="_blank" title="Search cover art">Search cover art</a>
+          style="color: lightblue; font-weight: bold;" target="_blank" title="Search cover art">
+          <BinocularsIcon/> Search cover art
+        </a>
       <br>
 
-       <a href="#" @click.prevent="$emit('action', { type: 'add-log-entry-next', payload: entry.file })" title="Enqueue log entry">Enqueue this song next... </a>
+       <a href="#" @click.prevent="$emit('action', { type: 'add-log-entry-next', payload: entry.file })" title="Enqueue log entry"> <i class="bi bi-arrow-return-right" aria-hidden="true"></i>&nbsp;<i class="bi bi-music-note-list"></i>&nbsp;Enqueue this song next</a>
 
       </details>
 
@@ -88,6 +83,8 @@
 <script>
   import { ref, reactive, computed, watch } from 'vue'
   import { sec2sex } from '@/utils/time.js'
+//  import binocularsIcon from '@/assets/binoculars.svg'
+  import BinocularsIcon from '@/assets/binocularsIcon.vue'
 
   export default {
     name: 'LogSection',
@@ -96,6 +93,9 @@
       entries: Array,
       viewMode: String,
       showPath: Boolean
+    },
+    components: {
+      BinocularsIcon
     },
 
     setup(props) {
@@ -159,7 +159,8 @@
       formatDisc,
       formatTrack,
       formatDuration,
-      formatAlbum
+      formatAlbum,
+//      binocularsIcon,
     }
   } //setup props
 }
