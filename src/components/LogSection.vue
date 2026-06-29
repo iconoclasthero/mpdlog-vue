@@ -1,9 +1,21 @@
 <template>
   <div>
     <hr style="background-color:#912715">
-    <strong class="time">🪵 of previous songs:</strong>
-    <br><br>
+    <strong class="time">🪵 of previous songs:</strong> &nbsp;
+<!-- <span
+  :title="isScrobbling
+    ? 'Disable Last.fm scrobbling'
+    : 'Enable Last.fm scrobbling'"
+>
+-->
+<lastFM
+  class="scrobbler-icon"
+  :isScrobbling="isScrobbling"
+  @click="$emit('action', 'toggle_scrobbler')"
+/>
+<!-- </span> -->
 
+<br><br>
     <template v-for="(entry, index) in logEntries" :key="index">
       <details name="Listen">
         <summary>
@@ -81,57 +93,63 @@
 </template>
 
 <script>
-  import { ref, reactive, computed, watch } from 'vue'
-  import { sec2sex } from '@/utils/time.js'
-//  import binocularsIcon from '@/assets/binoculars.svg'
-  import BinocularsIcon from '@/assets/binocularsIcon.vue'
 
-  export default {
-    name: 'LogSection',
-    emits: ['action'],
-    props: {
-      entries: Array,
-      viewMode: String,
-      showPath: Boolean
-    },
-    components: {
-      BinocularsIcon
-    },
+import { ref, computed, watch } from 'vue'
+import { sec2sex } from '@/utils/time.js'
 
-    setup(props) {
-      // --- reactive copies of props ---
-      const internalEntries = ref(props.entries || [])
-      const internalViewMode = ref(props.viewMode || 'short')
+import onIcon from '@/assets/last-fm-on.vue'
+import offIcon from '@/assets/last-fm-off.vue'
+import lastFM from '@/assets/lastFM.vue'
+import BinocularsIcon from '@/assets/binocularsIcon.vue'
 
-      // --- watch props.entries ---
-      watch(
-        () => props.entries,
-        newVal => {
-          internalEntries.value = newVal || []
-        }
-      )
+export default {
+  name: 'LogSection',
+  emits: ['action'],
+  props: {
+    entries: Array,
+    viewMode: String,
+    showPath: Boolean,
+    scrobbler: Object
+  },
+  components: {
+    BinocularsIcon,
+    lastFM,
+    onIcon,
+    offIcon
+  },
+  setup(props, { emit }) {
+    const internalEntries = ref(props.entries || [])
+    const internalViewMode = ref(props.viewMode || 'short')
+    const isScrobbling = ref(false)
 
-      // --- watch props.viewMode ---
-      watch(
-        () => props.viewMode,
-        newMode => {
-          internalViewMode.value = newMode || 'short'
-          console.log('viewMode changed to', internalViewMode.value)
-          // you could recalc derived values here if needed
-        }
-      )
+    watch(() => props.scrobbler?.running, v => {
+      isScrobbling.value = !!v },
+      { immediate: true }
+    )
 
-      // --- formatting helpers ---
-      const formatDisc = disc => String(disc || '0').padStart(2, '0')
-      const formatTrack = track => String(track || '0').padStart(2, '0')
-      const formatDuration = duration => sec2sex(duration || 0)
-      const formatAlbum = (album, year) => {
-      const cleanAlbum = album?.replace(' (mp3)', '') || ''
-      const yearPart = year?.split('-')[0] || ''
-      return `${cleanAlbum} ${yearPart ? `(${yearPart})` : ''}`
+//    const scrobbler = computed(() =>
+//      props.scrobbler || { enabled: false, running: false }
+//    )
+
+
+    watch(() => props.entries, v => {
+      internalEntries.value = v || []
+    })
+
+    watch(() => props.viewMode, v => {
+      internalViewMode.value = v || 'short'
+    })
+
+    const formatDisc = d => String(d || '0').padStart(2, '0')
+    const formatTrack = t => String(t || '0').padStart(2, '0')
+    const formatDuration = d => sec2sex(d || 0)
+
+    const formatAlbum = (album, year) => {
+      const clean = album?.replace(' (mp3)', '') || ''
+      const y = year?.split('-')[0] || ''
+      return `${clean} ${y ? `(${y})` : ''}`
     }
 
-    // --- merged log entries for skipped+ignored ---
     const logEntries = computed(() => {
       const list = internalEntries.value || []
       const result = []
@@ -140,7 +158,9 @@
         const cur = list[i]
         const next = list[i + 1]
 
-        if (cur?.action === 'skipped' && next?.action === 'ignored' && cur.file === next.file) {
+        if (cur?.action === 'skipped' &&
+            next?.action === 'ignored' &&
+            cur.file === next.file) {
           result.push({ ...cur, action: 'skipped-ignored' })
           i++
           continue
@@ -160,11 +180,106 @@
       formatTrack,
       formatDuration,
       formatAlbum,
-//      binocularsIcon,
+      BinocularsIcon,
+      isScrobbling,
+      lastFM,
     }
-  } //setup props
+  }
 }
-</script>
+//  import { ref, reactive, computed, watch } from 'vue'
+//  import { sec2sex } from '@/utils/time.js'
+////  import binocularsIcon from '@/assets/binoculars.svg'
+//  import BinocularsIcon from '@/assets/binocularsIcon.vue'
+//  import onIcon from '@/assets/last-fm-on.svg'
+//  import offIcon from '@/assets/last-fm-off.svg'
+//
+//  export default {
+//    name: 'LogSection',
+//    emits: ['action', 'scrobbler-cmd'],
+//    props: {
+//      entries: Array,
+//      viewMode: String,
+//      showPath: Boolean,
+//      scrobbler: Object
+//    },
+//    components: {
+//      BinocularsIcon
+//    },
+//methods: {
+//  toggleScrobbler() {
+//    const cmd = this.scrobbler?.enabled ? "off" : "on"
+//    this.$emit("scrobbler-cmd", cmd)
+//  }
+//},
+//
+//    setup(props) {
+//      // --- reactive copies of props ---
+//      const internalEntries = ref(props.entries || [])
+//      const internalViewMode = ref(props.viewMode || 'short')
+//
+//      // --- watch props.entries ---
+//      watch(
+//        () => props.entries,
+//        newVal => {
+//          internalEntries.value = newVal || []
+//        }
+//      )
+//
+//      // --- watch props.viewMode ---
+//      watch(
+//        () => props.viewMode,
+//        newMode => {
+//          internalViewMode.value = newMode || 'short'
+//          console.log('viewMode changed to', internalViewMode.value)
+//          // you could recalc derived values here if needed
+//        }
+//      )
+//
+//      // --- formatting helpers ---
+//      const formatDisc = disc => String(disc || '0').padStart(2, '0')
+//      const formatTrack = track => String(track || '0').padStart(2, '0')
+//      const formatDuration = duration => sec2sex(duration || 0)
+//      const formatAlbum = (album, year) => {
+//      const cleanAlbum = album?.replace(' (mp3)', '') || ''
+//      const yearPart = year?.split('-')[0] || ''
+//      return `${cleanAlbum} ${yearPart ? `(${yearPart})` : ''}`
+//    }
+//
+//    // --- merged log entries for skipped+ignored ---
+//    const logEntries = computed(() => {
+//      const list = internalEntries.value || []
+//      const result = []
+//
+//      for (let i = 0; i < list.length; i++) {
+//        const cur = list[i]
+//        const next = list[i + 1]
+//
+//        if (cur?.action === 'skipped' && next?.action === 'ignored' && cur.file === next.file) {
+//          result.push({ ...cur, action: 'skipped-ignored' })
+//          i++
+//          continue
+//        }
+//
+//        result.push(cur)
+//      }
+//
+//      return result
+//    })
+//
+//    return {
+//      internalEntries,
+//      internalViewMode,
+//      logEntries,
+//      formatDisc,
+//      formatTrack,
+//      formatDuration,
+//      formatAlbum,
+//      scrobbler,
+//      toggleScrobbler,
+//    }
+//  } //setup props
+//}
+//</script>
 
 <style scoped>
 .notes-info {
@@ -206,4 +321,18 @@ summary:hover {
   color: #80cbc4;
   vertical-align: +7px;
 }
+
+.scrobbler-icon {
+  width: 25px;
+  height: 25px;
+  max-width: 25px;
+  max-height: 25px;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.scrobbler-icon path {
+  fill: white;
+}
+
 </style>

@@ -114,6 +114,7 @@
     <!-- Log Section -->
     <LogSection
       v-if="viewMode === 'default' || viewMode === 'log' || viewMode === 'long'"
+      :scrobbler="scrobbler"
       :entries="logEntries"
       :view-mode="viewMode"
       :showPath="showPath"
@@ -259,6 +260,7 @@ const albumArtData = ref(null)
 
 const isConnected = ref(false)
 const player = ref(null)
+const scrobbler = ref(null)
 const current = ref(null)
 const next = ref(null)
 const linger = ref(null)
@@ -718,6 +720,7 @@ const handleStatusUpdate = (update) => {
   playerStatusUpdate.value = Date.now()
   if (debug) console.log("[App] playerStatusUpdate:", playerStatusUpdate.value)
 
+   scrobbler.value = update.scrobbler
       player.value = update.player
      current.value = update.current
         next.value = update.next
@@ -953,6 +956,7 @@ const handleWebSocketMessage = async (event) => {
       console.log('--------------INVESTIGATE TRIGGER---------------')
       player.value = data.player || player.value
       current.value = data.song || current.value
+      scrobbler.value = data.scrobbler || scobbler.value
       return
     }
 
@@ -1307,6 +1311,7 @@ const handleAction = (action) => {
 //  pause_timer_on:   JSON.stringify({ system:'pause_timer', cmd:'on', args:'pauseTimerDur'   }),
 //  pause_timer_off:  JSON.stringify({ system:'pause_timer', cmd:'off'                        }),
     linger_next:      JSON.stringify({ system:'linger',      cmd:'next'                       }),
+    toggle_scrobbler: JSON.stringify({ system:'scrobbler',   cmd:'toggle'                     }),
     linger_start:     'linger-start',
     linger_toggle:    JSON.stringify({ system:'linger',      cmd:'toggle'                     }),
     toggle_output:    'toggle-output',
