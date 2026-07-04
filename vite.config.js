@@ -4,15 +4,19 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [vue()],
-  resolve: {              // <-- add this block
+  resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src')
-    }
+    },
+    preserveSymlinks: true
   },
   server: {
     port: 3000,
-    host: '0.0.0.0',  // Listen on all network interfaces
-    strictPort: false
+    host: '0.0.0.0',
+    strictPort: false,
+    watch: {
+      followSymlinks: true
+    }
   },
   build: {
     outDir: '/var/www/mpdlog-vue',  // target folder
