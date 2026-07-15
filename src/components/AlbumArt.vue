@@ -8,42 +8,42 @@
     </svg>
     <!-- Desktop: unchanged -->
 
-<div v-if="albumArtData" class="art-block">
-    <img
-      v-if="albumArtData"
-      :src="albumArtData"
-      alt="Album Art"
-      @click="handleImageClick"
-      :style="[imgStyle, isLowRes ? { border: '3px solid red', boxSizing: 'border-box' } : {}]"
-      @load="checkSize"
-    >
+    <div v-if="albumArt.url" class="art-block">
+      <img
+        v-if="albumArt.url"
+        :src="albumArt.url"
+        alt="Album Art"
+        @click="handleImageClick"
+        :style="[imgStyle, isLowRes ? { border: '3px solid red', boxSizing: 'border-box' } : {}]"
+        @load="checkSize"
+      >
 
-    <a
-      v-if="albumArtData"
-      class="cover-search-button"
-      :href="coverSearchURL"
-      target="_blank"
-      title="Search cover art"
-    >
-      <svg width="16" height="16">
-        <use href="#binoculars-icon" />
-      </svg>
-    </a>
-    <a href="#"
-      class="cover-zoom-button"
-      @click.prevent="zoomed = !zoomed"
-      title="Zoom image"
-    >🔍</a>
+      <a
+        v-if="albumArt.url"
+        class="cover-search-button"
+        :href="coverSearchURL"
+        target="_blank"
+        title="Search cover art"
+      >
+        <svg width="16" height="16">
+          <use href="#binoculars-icon" />
+        </svg>
+      </a>
+      <a href="#"
+        class="cover-zoom-button"
+        @click.prevent="zoomed = !zoomed"
+        title="Zoom image"
+      >🔍</a>
 
 
-     <a href="#"
-       v-if="albumArtData"
-       class="fix-art-button"
-       @click="$emit('action', 'fix_art')"
-       title="Mark album art for fixing"
-     >⚠</a>
+       <a href="#"
+         v-if="albumArt.url"
+         class="fix-art-button"
+         @click="$emit('action', 'fix_art')"
+         title="Mark album art for fixing"
+       >⚠</a>
 
-</div>
+    </div>
     <!-- Placeholder / fallback -->
 
     <div v-else-if="isLoading" class="musicdna-placeholder"
@@ -115,7 +115,9 @@ const emit = defineEmits(['refreshArt', 'action'])
 const isLowRes = ref(false)
 
 const props = defineProps({
-  albumArtData: String,
+  albumArt: Object,
+//  albumArtData: String,
+//  albumArtMeta: Object,
   artist: String,
   mbArtistID: String,
   current: Object
@@ -145,8 +147,10 @@ const imgStyle = computed(() => ({
     : (layout.narrow.value ? mobileMaxWidth.value : deskWidth.value + 'px')
 }))
 
-if (debug) console.log('imgStyle', imgStyle)
-if (debug) console.log('props.current.file: ', props.current.file)
+if ( debug ) console.log('imgStyle', imgStyle)
+if ( debug ) console.log('props.current.file: ', props.current.file)
+if ( debug ) console.log(props.albumArt)
+
 const coverSearchURL = computed(() => {
   const coverSearchParams = new URLSearchParams({
     album: props.current.album?.replace(/ \(mp3\)\s*$/, ''),
@@ -154,7 +158,7 @@ const coverSearchURL = computed(() => {
   });
   const coverSearchURL = 'https://covers.musichoarders.xyz?' + coverSearchParams.toString()
 //  console.log('coverSearchURL', coverSearchURL)
-  if (debug) console.log('coverSearchURL', coverSearchURL)
+  if ( debug ) console.log('coverSearchURL', coverSearchURL)
   return coverSearchURL
 });
 
@@ -162,7 +166,7 @@ const handleClick = (ev) => {
   if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
     // Open in new tab if modifier key pressed
     const link = document.createElement('a')
-    link.href = props.albumArtData
+    link.href = props.albumArt.url
     link.target = '_blank'
     link.click()
   } else {
@@ -173,24 +177,38 @@ const handleClick = (ev) => {
 
 const checkSize = (ev) => {
   const img = ev.target
+  const width = props.albumArt?.meta?.response?.width
+  const height = props.albumArt?.meta?.response?.height
+  const isWebP = props.albumArt?.mime === 'image/webp'
 
+//  isLowRes.value =
+//    (img.naturalWidth < 1200 || img.naturalHeight < 1200) &&
+//    !isWebP
+//
 //  console.log(
-//    '[AlbumArt] Dimensions:',
-//    img.naturalWidth, '×', img.naturalHeight,
-//    '—', props.current.artist, "--", props.current.album,
-//    coverSearchURL.value
+//    `[AlbumArt] Dimensions: %c${img.naturalWidth} × ${img.naturalHeight}%c\n\
+//     ${props.current.artist} -- ${props.current.album}\n\
+//     ${coverSearchURL.value}\n isLowRes: ${isLowRes.value}\n`,
+//    'color: #b392f0; font-weight: bold;', // Style for the dimensions
+//    'color: inherit; font-weight: normal;' // Reset style for the rest of the text
 //  )
 
-  isLowRes.value = img.naturalWidth < 1200 || img.naturalHeight < 1200
+  isLowRes.value =
+    (width < 1200 || height < 1200) &&
+    !isWebP
 
   console.log(
-    `[AlbumArt] Dimensions: %c${img.naturalWidth} × ${img.naturalHeight}%c\n\
+    `[AlbumArt] Dimensions: %c${width} × ${height}%c\n\
+     browser DOM: %c${img.naturalWidth} × ${img.naturalHeight}%c\n\
      ${props.current.artist} -- ${props.current.album}\n\
      ${coverSearchURL.value}\n isLowRes: ${isLowRes.value}\n`,
-    'color: #b392f0; font-weight: bold;', // Style for the dimensions
-    'color: inherit; font-weight: normal;' // Reset style for the rest of the text
+    'color: #b392f0; font-weight: bold;',
+    'color: inherit; font-weight: normal;',
+    'color: #b392f0; font-weight: bold;',
+    'color: inherit; font-weight: normal;'
   )
 
+  console.log(props.albumArt)
 
   if ( false && (
     img.naturalWidth <= 500 ||
@@ -201,6 +219,22 @@ const checkSize = (ev) => {
 //    emit('refreshArt')
   }
 }
+
+// Eventually replace checkSize with this watch to just look at the incoming metadata?
+//watch(
+//  () => props.albumArt,
+//  (art) => {
+//    if (!art?.meta?.response) return
+//
+//    isLowRes.value =
+//      (art.meta.response.width < 1200 ||
+//       art.meta.response.height < 1200) &&
+//      art.mime !== 'image/webp'
+//  },
+//  { deep: true }
+//)
+
+
 
 
 // Only use layout for mobile

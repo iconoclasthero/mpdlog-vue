@@ -94,7 +94,9 @@
       v-if="viewMode !== 'artwork' && current"
       :key="componentDebugKey"
       :artist="current.artist"
+      :albumArt="art"
       :albumArtData="albumArtData"
+      :albumArtMeta="art"
       :mbArtistID="current.musicbrainz_artistid"
       :current="current"
       @refreshArt="refreshAlbumArt"
@@ -604,7 +606,13 @@ const handleBlob = async (rawData, msg = null) => {
   if (art.url) URL.revokeObjectURL(art.url)
 
   art.url = URL.createObjectURL(blob)
-
+  if ( debug ) {
+    console.log({
+        artMime: art.mime,
+        metaMime: art.meta?.response?.mime,
+        blobType: blob.type
+      })
+  }
   albumArtData.value = null
   requestAnimationFrame(() => {
     albumArtData.value = art.url
