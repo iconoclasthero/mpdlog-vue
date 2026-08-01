@@ -19,7 +19,7 @@
       :color="ringColor"
       :playing="player.state==='play'"
       :playerStatusUpdate="playerStatusUpdate"
-      img-src="/android-icon-96x96.png"
+      img-src="/jerry-garcia-96x96.png"
       @seek="seekTo"
       @action="handleAction"
     />
@@ -67,7 +67,8 @@
   class="menu-btn mobile"
   @click="showPanel = !showPanel"
 >
-  ☰
+<!--  ☰ -->
+🥞
 </button>
 
     <!-- Currently Playing Section -->
