@@ -19,7 +19,7 @@
       :color="ringColor"
       :playing="player.state==='play'"
       :playerStatusUpdate="playerStatusUpdate"
-      img-src="/jerry-garcia-96x96.png"
+      img-src="/Days Between transparent-96x96.png"
       @seek="seekTo"
       @action="handleAction"
     />
