@@ -203,8 +203,7 @@ onUnmounted(() => { if(timer) clearInterval(timer) })
 .center-image {
   position: absolute;
   top: 50%; left: 50%;
-/*  width: 96px; height: 96px; */
-  width: 124px; height: 124px;
+  width: 96px; height: 96px;
   border-radius: 50%;
   transform: translate(-50%,-50%);
 }
