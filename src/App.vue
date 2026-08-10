@@ -19,7 +19,7 @@
       :color="ringColor"
       :playing="player.state==='play'"
       :playerStatusUpdate="playerStatusUpdate"
-      img-src="/Days Between transparent.png"
+      img-src="/android-icon-96x96.png"
       @seek="seekTo"
       @action="handleAction"
     />
