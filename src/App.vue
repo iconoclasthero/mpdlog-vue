@@ -58,7 +58,8 @@
  }"
 >
 <!--  ☰ -->
-🥞
+<!-- 🥞 -->
+🍔
 </button>
 
 
@@ -68,7 +69,8 @@
   @click="showPanel = !showPanel"
 >
 <!--  ☰ -->
-🥞
+<!-- 🥞 -->
+🍔
 </button>
 
     <!-- Currently Playing Section -->
