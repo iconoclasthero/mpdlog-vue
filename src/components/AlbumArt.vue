@@ -194,7 +194,7 @@ const checkSize = (ev) => {
 //  )
 
   isLowRes.value =
-    (width < 1200 || height < 1200) &&
+    (width < 1500 || height < 1500) &&
     !isWebP
 
   console.log(
