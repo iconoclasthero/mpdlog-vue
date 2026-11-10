@@ -29,19 +29,26 @@
           <use href="#binoculars-icon" />
         </svg>
       </a>
-      <a href="#"
+      <a
+        href="#"
         class="cover-zoom-button"
         @click.prevent="zoomed = !zoomed"
         title="Zoom image"
       >🔍</a>
 
+      <a
+        href="#"
+        class="fix-art-button"
+        @click.prevent="$emit('action', 'fix_art')"
+        title="Mark album art for fixing"
+      >⚠</a>
 
-       <a href="#"
-         v-if="albumArt.url"
-         class="fix-art-button"
-         @click="$emit('action', 'fix_art')"
-         title="Mark album art for fixing"
-       >⚠</a>
+      <button
+        class="get-new-picture-button"
+        type="button"
+        @click="getNewPicture"
+        title="Get new picture"
+      >Get new picture</button>
 
     </div>
     <!-- Placeholder / fallback -->
@@ -161,6 +168,26 @@ const coverSearchURL = computed(() => {
   if ( debug ) console.log('coverSearchURL', coverSearchURL)
   return coverSearchURL
 });
+
+const getNewPicture = () => {
+  const input = prompt('Enter the URL of the new album picture:')
+  if (input === null || !input.trim()) return
+
+  let url
+  try {
+    url = new URL(input.trim())
+  } catch {
+    alert('Invalid URL')
+    return
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    alert('URL must use HTTP or HTTPS')
+    return
+  }
+
+  emit('action', { type: 'artwork_replace', url: url.href })
+}
 
 const handleClick = (ev) => {
   if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
@@ -382,7 +409,7 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
 
 .cover-zoom-button {
   position: absolute;
-  right: 6px;
+  left: 6px;
   bottom: 6px;
   z-index: 10;
 }
@@ -390,6 +417,13 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
 .fix-art-button {
   position: absolute;
   left: 6px;
+  top: 6px;
+  z-index: 10;
+}
+
+.get-new-picture-button {
+  position: absolute;
+  right: 6px;
   bottom: 6px;
   z-index: 10;
 }
