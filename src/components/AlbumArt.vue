@@ -156,7 +156,6 @@
             placeholder="https://..."
             autocomplete="off"
             spellcheck="false"
-            @paste="handleUrlPaste"
             @keydown.enter.prevent="replaceNewPicture"
           >
           <button
@@ -287,16 +286,6 @@ const newPictureUrlError = computed(() => {
   if (!isArtworkUrl(value)) return 'Enter a valid HTTP(S) URL or file URI'
   return ''
 })
-
-const handleUrlPaste = (event) => {
-  const value = event.clipboardData?.getData('text')?.trim() ?? ''
-
-  event.preventDefault()
-
-  if (value.length > 512 || !isArtworkUrl(value)) return
-
-  newPictureUrl.value = value
-}
 
 const openNewPicture = async () => {
   const requestId = ++clipboardReadId
