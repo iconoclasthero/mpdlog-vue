@@ -48,7 +48,9 @@
         type="button"
         @click="openNewPicture"
         title="Get new picture"
-      >Get new picture</button>
+        aria-label="Get new picture"
+        v-html="MAGNET_ICON"
+      ></button>
 
     </div>
     <!-- Placeholder / fallback -->
@@ -126,9 +128,11 @@
             ref="newPictureInput"
             v-model="newPictureUrl"
             type="url"
+            maxlength="512"
             placeholder="https://..."
             autocomplete="off"
             spellcheck="false"
+            @paste="handleUrlPaste"
             @keydown.enter.prevent="replaceNewPicture"
           >
           <button
@@ -151,15 +155,7 @@
             :disabled="!newPictureUrl.trim() || !!newPictureUrlError"
             @click="replaceNewPicture"
           >
-            <svg
-              viewBox="0 0 16 16"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path d="M11 0h5v4h-5v-4z"/>
-              <path d="M11 5v3c0 1.6-1.4 3-3 3s-3-1.4-3-3v-3h-5v3c0 4.4 3.6 8 8 8s8-3.6 8-8v-3h-5z"/>
-              <path d="M0 0h5v4h-5v-4z"/>
-            </svg>
+            <span v-html="MAGNET_ICON"></span>
             Fetch
           </button>
         </div>
@@ -227,29 +223,46 @@ const coverSearchURL = computed(() => {
   return coverSearchURL
 });
 
+const MAGNET_ICON = `
+  <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M11 0h5v4h-5V0z"/>
+    <path d="M11 5v3c0 1.6-1.4 3-3 3S5 9.6 5 8V5H0v3c0 4.4 3.6 8 8 8s8-3.6 8-8V5h-5z"/>
+    <path d="M0 0h5v4H0V0z"/>
+  </svg>`
+
 const newPictureOpen = ref(false)
 const newPictureUrl = ref('')
 const newPictureInput = ref(null)
 
 let clipboardReadId = 0
 
-const newPictureUrlError = computed(() => {
-  const value = newPictureUrl.value.trim()
-  if (!value) return ''
-  if (!/^https?:\\/\\//i.test(value)) {
-    return 'URL must begin with http:// or https://'
-  }
+const isHttpUrl = (value) => {
+  if (!/^https?:\\/\\//i.test(value)) return false
 
   try {
     const url = new URL(value)
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return 'URL must use HTTP or HTTPS'
-    }
+    return url.protocol === 'http:' || url.protocol === 'https:'
   } catch {
-    return 'Invalid URL'
+    return false
   }
+}
 
+const newPictureUrlError = computed(() => {
+  const value = newPictureUrl.value.trim()
+  if (!value) return ''
+  if (value.length > 512) return 'URL cannot exceed 512 characters'
+  if (!isHttpUrl(value)) return 'Enter a valid HTTP or HTTPS URL'
   return ''
+})
+
+const handleUrlPaste = (event) => {
+  const value = event.clipboardData?.getData('text')?.trim() ?? ''
+
+  event.preventDefault()
+
+  if (value.length > 512 || !isHttpUrl(value)) return
+
+  newPictureUrl.value = value
 })
 
 const openNewPicture = async () => {
@@ -280,7 +293,9 @@ const openNewPicture = async () => {
       newPictureUrl.value
     ) return
 
-    newPictureUrl.value = clipboardText
+    if (clipboardText.length <= 512 && isHttpUrl(clipboardText)) {
+      newPictureUrl.value = clipboardText
+    }
   } catch {
     // Permission denied or clipboard unavailable.
   }
@@ -544,6 +559,20 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   right: 6px;
   bottom: 6px;
   z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  color: #000;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.get-new-picture-button svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 
 
@@ -618,7 +647,7 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   width: 1em;
   height: 1em;
   flex: 0 0 auto;
-  fill: black;
+  fill: currentColor;
 }
 
 </style>
