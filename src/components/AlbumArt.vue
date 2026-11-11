@@ -589,7 +589,7 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   width: 16px;
   height: 16px;
   padding: 0;
-  color: #000;
+  color: #0000ee;
   background: none;
   border: 0;
   cursor: pointer;
