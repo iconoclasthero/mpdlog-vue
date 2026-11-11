@@ -16,7 +16,8 @@ export default defineConfig({
     strictPort: false,
     watch: {
       followSymlinks: true
-    }
+    },
+    allowedHosts: ["mpd-test.iconoclasthero.com"]
   },
   build: {
     outDir: '/var/www/mpdlog-vue',  // target folder

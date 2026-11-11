@@ -29,27 +29,44 @@
           <use href="#binoculars-icon" />
         </svg>
       </a>
-      <a href="#"
+      <a
+        href="#"
         class="cover-zoom-button"
         @click.prevent="zoomed = !zoomed"
         title="Zoom image"
       >🔍</a>
 
+      <a
+        href="#"
+        class="fix-art-button"
+        @click.prevent="$emit('action', 'fix_art')"
+        title="Mark album art for fixing"
+      >⚠</a>
 
-       <a href="#"
-         v-if="albumArt.url"
-         class="fix-art-button"
-         @click="$emit('action', 'fix_art')"
-         title="Mark album art for fixing"
-       >⚠</a>
+      <button
+        class="get-new-picture-button"
+        type="button"
+        @click="openNewPicture"
+        title="Get new picture"
+        aria-label="Get new picture"
+        v-html="MAGNET_ICON"
+      ></button>
 
     </div>
     <!-- Placeholder / fallback -->
 
-    <div v-else-if="isLoading" class="musicdna-placeholder"
+    <div v-else-if="isLoading" class="art-block musicdna-placeholder"
          @click="$emit('refreshArt')"
          :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
       <p>Loading album art...</p>
+      <button
+        class="get-new-picture-button"
+        type="button"
+        @click.stop="openNewPicture"
+        title="Get new picture"
+        aria-label="Get new picture"
+        v-html="MAGNET_ICON"
+      ></button>
     </div>
 
 <!--    <img v-else-if="isDead" class="musicdna-placeholder"
@@ -76,6 +93,14 @@
           <use href="#binoculars-icon" />
         </svg>
       </a>
+      <button
+        class="get-new-picture-button"
+        type="button"
+        @click="openNewPicture"
+        title="Get new picture"
+        aria-label="Get new picture"
+        v-html="MAGNET_ICON"
+      ></button>
     </div>
 
 
@@ -99,6 +124,66 @@
         </svg>
 <!--        🔍 -->
       </a>
+      <button
+        class="get-new-picture-button"
+        type="button"
+        @click="openNewPicture"
+        title="Get new picture"
+        aria-label="Get new picture"
+        v-html="MAGNET_ICON"
+      ></button>
+    </div>
+
+    <div
+      v-if="newPictureOpen"
+      class="new-picture-overlay"
+      @click.self="closeNewPicture"
+    >
+      <div
+        class="new-picture-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-picture-title"
+        @keydown.esc.stop.prevent="closeNewPicture"
+      >
+        <h3 id="new-picture-title">Get new picture</h3>
+        <div class="new-picture-input-row">
+          <input
+            ref="newPictureInput"
+            v-model="newPictureUrl"
+            type="url"
+            maxlength="512"
+            placeholder="https://..."
+            autocomplete="off"
+            spellcheck="false"
+            @paste="handleUrlPaste"
+            @keydown.enter.prevent="replaceNewPicture"
+          >
+          <button
+            v-if="newPictureUrl"
+            type="button"
+            class="new-picture-clear"
+            title="Clear URL"
+            aria-label="Clear URL"
+            @click="clearNewPictureUrl"
+          >×</button>
+        </div>
+        <p v-if="newPictureUrlError" class="new-picture-error">
+          {{ newPictureUrlError }}
+        </p>
+        <div class="new-picture-actions">
+          <button type="button" @click="closeNewPicture">Cancel</button>
+          <button
+            type="button"
+            class="new-picture-fetch"
+            :disabled="!newPictureUrl.trim() || !!newPictureUrlError"
+            @click="replaceNewPicture"
+          >
+            <span v-html="MAGNET_ICON"></span>
+            Fetch
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 <!--  <hr v-if="!albumArtData" /> -->
@@ -161,6 +246,105 @@ const coverSearchURL = computed(() => {
   if ( debug ) console.log('coverSearchURL', coverSearchURL)
   return coverSearchURL
 });
+
+const MAGNET_ICON = `
+  <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">
+    <path d="M11 0h5v4h-5V0z"/>
+    <path d="M11 5v3c0 1.6-1.4 3-3 3S5 9.6 5 8V5H0v3c0 4.4 3.6 8 8 8s8-3.6 8-8V5h-5z"/>
+    <path d="M0 0h5v4H0V0z"/>
+  </svg>`
+
+const newPictureOpen = ref(false)
+const newPictureUrl = ref('')
+const newPictureInput = ref(null)
+
+let clipboardReadId = 0
+
+const isHttpUrl = (value) => {
+  if (!/^https?:\/\//i.test(value)) return false
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const newPictureUrlError = computed(() => {
+  const value = newPictureUrl.value.trim()
+  if (!value) return ''
+  if (value.length > 512) return 'URL cannot exceed 512 characters'
+  if (!isHttpUrl(value)) return 'Enter a valid HTTP or HTTPS URL'
+  return ''
+})
+
+const handleUrlPaste = (event) => {
+  const value = event.clipboardData?.getData('text')?.trim() ?? ''
+
+  event.preventDefault()
+
+  if (value.length > 512 || !isHttpUrl(value)) return
+
+  newPictureUrl.value = value
+}
+
+const openNewPicture = async () => {
+  const requestId = ++clipboardReadId
+  newPictureUrl.value = ''
+  newPictureOpen.value = true
+
+  // Start clipboard access directly from the button click.
+  let clipboardPromise
+  try {
+    if (navigator.clipboard?.readText) {
+      clipboardPromise = navigator.clipboard.readText()
+    }
+  } catch {
+    // Clipboard unavailable; manual paste remains possible.
+  }
+
+  await nextTick()
+  newPictureInput.value?.focus()
+
+  if (!clipboardPromise) return
+
+  try {
+    const clipboardText = (await clipboardPromise).trim()
+    if (
+      requestId !== clipboardReadId ||
+      !newPictureOpen.value ||
+      newPictureUrl.value
+    ) return
+
+    if (clipboardText.length <= 512 && isHttpUrl(clipboardText)) {
+      newPictureUrl.value = clipboardText
+    }
+  } catch {
+    // Permission denied or clipboard unavailable.
+  }
+}
+
+const clearNewPictureUrl = () => {
+  ++clipboardReadId
+  newPictureUrl.value = ''
+  newPictureInput.value?.focus()
+}
+
+const closeNewPicture = () => {
+  ++clipboardReadId
+  newPictureOpen.value = false
+  newPictureUrl.value = ''
+}
+
+const replaceNewPicture = () => {
+  const value = newPictureUrl.value.trim()
+  if (!value || newPictureUrlError.value) return
+
+  const url = new URL(value)
+  emit('action', { type: 'artwork_replace', url: url.href })
+  closeNewPicture()
+}
 
 const handleClick = (ev) => {
   if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
@@ -382,7 +566,7 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
 
 .cover-zoom-button {
   position: absolute;
-  right: 6px;
+  left: 6px;
   bottom: 6px;
   z-index: 10;
 }
@@ -390,8 +574,107 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
 .fix-art-button {
   position: absolute;
   left: 6px;
+  top: 6px;
+  z-index: 10;
+}
+
+.get-new-picture-button {
+  position: absolute;
+  right: 6px;
   bottom: 6px;
   z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  color: #007bff;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.get-new-picture-button svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+
+.new-picture-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.new-picture-modal {
+  width: 100%;
+  max-width: 480px;
+  padding: 20px;
+  color: var(--text-color, #eee);
+  background: var(--background-color, #252525);
+  border: 1px solid #666;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.new-picture-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.new-picture-input-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px;
+}
+
+.new-picture-clear {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.new-picture-error {
+  color: #ff7777;
+  font-size: 0.85em;
+}
+
+.new-picture-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.new-picture-actions button {
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.new-picture-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.new-picture-fetch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.new-picture-fetch svg {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  fill: currentColor;
 }
 
 </style>

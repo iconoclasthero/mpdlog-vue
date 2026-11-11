@@ -474,6 +474,11 @@ const connectWebSocketRouter = () => {
 
     if (msg.system === 'artwork') {
       resultBus.emit('artwork', msg)
+
+      if (msg.cmd === 'replace') {
+        refreshAlbumArt()
+      }
+
       return
     }
 
@@ -1203,6 +1208,15 @@ const handleAction = (action) => {
   }
 
   if (typeof action === 'object') {
+
+    if (action.type === 'artwork_replace') {
+      sendCommand({
+        system: 'artwork',
+        cmd: 'replace',
+        args: { url: action.url }
+      }, "handleAction")
+      return
+    }
 
     if ( action.type === 'add-log-entry-next' ) {
       if ( debug ) {
