@@ -46,7 +46,7 @@
       <button
         class="get-new-picture-button"
         type="button"
-        @click="getNewPicture"
+        @click="openNewPicture"
         title="Get new picture"
       >Get new picture</button>
 
@@ -106,6 +106,64 @@
         </svg>
 <!--        🔍 -->
       </a>
+    </div>
+
+    <div
+      v-if="newPictureOpen"
+      class="new-picture-overlay"
+      @click.self="closeNewPicture"
+    >
+      <div
+        class="new-picture-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-picture-title"
+        @keydown.esc.stop.prevent="closeNewPicture"
+      >
+        <h3 id="new-picture-title">Get new picture</h3>
+        <div class="new-picture-input-row">
+          <input
+            ref="newPictureInput"
+            v-model="newPictureUrl"
+            type="url"
+            placeholder="https://..."
+            autocomplete="off"
+            spellcheck="false"
+            @keydown.enter.prevent="replaceNewPicture"
+          >
+          <button
+            v-if="newPictureUrl"
+            type="button"
+            class="new-picture-clear"
+            title="Clear URL"
+            aria-label="Clear URL"
+            @click="clearNewPictureUrl"
+          >×</button>
+        </div>
+        <p v-if="newPictureUrlError" class="new-picture-error">
+          {{ newPictureUrlError }}
+        </p>
+        <div class="new-picture-actions">
+          <button type="button" @click="closeNewPicture">Cancel</button>
+          <button
+            type="button"
+            class="new-picture-fetch"
+            :disabled="!newPictureUrl.trim() || !!newPictureUrlError"
+            @click="replaceNewPicture"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path d="M11 0h5v4h-5v-4z"/>
+              <path d="M11 5v3c0 1.6-1.4 3-3 3s-3-1.4-3-3v-3h-5v3c0 4.4 3.6 8 8 8s8-3.6 8-8v-3h-5z"/>
+              <path d="M0 0h5v4h-5v-4z"/>
+            </svg>
+            Fetch
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 <!--  <hr v-if="!albumArtData" /> -->
@@ -169,24 +227,84 @@ const coverSearchURL = computed(() => {
   return coverSearchURL
 });
 
-const getNewPicture = () => {
-  const input = prompt('Enter the URL of the new album picture:')
-  if (input === null || !input.trim()) return
+const newPictureOpen = ref(false)
+const newPictureUrl = ref('')
+const newPictureInput = ref(null)
 
-  let url
+let clipboardReadId = 0
+
+const newPictureUrlError = computed(() => {
+  const value = newPictureUrl.value.trim()
+  if (!value) return ''
+  if (!/^https?:\\/\\//i.test(value)) {
+    return 'URL must begin with http:// or https://'
+  }
+
   try {
-    url = new URL(input.trim())
+    const url = new URL(value)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return 'URL must use HTTP or HTTPS'
+    }
   } catch {
-    alert('Invalid URL')
-    return
+    return 'Invalid URL'
   }
 
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    alert('URL must use HTTP or HTTPS')
-    return
+  return ''
+})
+
+const openNewPicture = async () => {
+  const requestId = ++clipboardReadId
+  newPictureUrl.value = ''
+  newPictureOpen.value = true
+
+  // Start clipboard access directly from the button click.
+  let clipboardPromise
+  try {
+    if (navigator.clipboard?.readText) {
+      clipboardPromise = navigator.clipboard.readText()
+    }
+  } catch {
+    // Clipboard unavailable; manual paste remains possible.
   }
 
+  await nextTick()
+  newPictureInput.value?.focus()
+
+  if (!clipboardPromise) return
+
+  try {
+    const clipboardText = (await clipboardPromise).trim()
+    if (
+      requestId !== clipboardReadId ||
+      !newPictureOpen.value ||
+      newPictureUrl.value
+    ) return
+
+    newPictureUrl.value = clipboardText
+  } catch {
+    // Permission denied or clipboard unavailable.
+  }
+}
+
+const clearNewPictureUrl = () => {
+  ++clipboardReadId
+  newPictureUrl.value = ''
+  newPictureInput.value?.focus()
+}
+
+const closeNewPicture = () => {
+  ++clipboardReadId
+  newPictureOpen.value = false
+  newPictureUrl.value = ''
+}
+
+const replaceNewPicture = () => {
+  const value = newPictureUrl.value.trim()
+  if (!value || newPictureUrlError.value) return
+
+  const url = new URL(value)
   emit('action', { type: 'artwork_replace', url: url.href })
+  closeNewPicture()
 }
 
 const handleClick = (ev) => {
@@ -426,6 +544,81 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   right: 6px;
   bottom: 6px;
   z-index: 10;
+}
+
+
+.new-picture-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.new-picture-modal {
+  width: 100%;
+  max-width: 480px;
+  padding: 20px;
+  color: var(--text-color, #eee);
+  background: var(--background-color, #252525);
+  border: 1px solid #666;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.new-picture-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.new-picture-input-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px;
+}
+
+.new-picture-clear {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.new-picture-error {
+  color: #ff7777;
+  font-size: 0.85em;
+}
+
+.new-picture-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.new-picture-actions button {
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.new-picture-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.new-picture-fetch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.new-picture-fetch svg {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  fill: black;
 }
 
 </style>
