@@ -260,12 +260,21 @@ const newPictureInput = ref(null)
 
 let clipboardReadId = 0
 
-const isHttpUrl = (value) => {
-  if (!/^https?:\/\//i.test(value)) return false
+const isArtworkUrl = (value) => {
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const url = new URL(value)
+      return url.protocol === 'http:' || url.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }
+
+  if (!/^file:/i.test(value)) return false
 
   try {
     const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
+    return url.protocol === 'file:' && !url.host && !!url.pathname
   } catch {
     return false
   }
@@ -275,7 +284,7 @@ const newPictureUrlError = computed(() => {
   const value = newPictureUrl.value.trim()
   if (!value) return ''
   if (value.length > 512) return 'URL cannot exceed 512 characters'
-  if (!isHttpUrl(value)) return 'Enter a valid HTTP or HTTPS URL'
+  if (!isArtworkUrl(value)) return 'Enter a valid HTTP(S) URL or file URI'
   return ''
 })
 
@@ -284,7 +293,7 @@ const handleUrlPaste = (event) => {
 
   event.preventDefault()
 
-  if (value.length > 512 || !isHttpUrl(value)) return
+  if (value.length > 512 || !isArtworkUrl(value)) return
 
   newPictureUrl.value = value
 }
@@ -317,7 +326,7 @@ const openNewPicture = async () => {
       newPictureUrl.value
     ) return
 
-    if (clipboardText.length <= 512 && isHttpUrl(clipboardText)) {
+    if (clipboardText.length <= 512 && isArtworkUrl(clipboardText)) {
       newPictureUrl.value = clipboardText
     }
   } catch {
@@ -342,7 +351,10 @@ const replaceNewPicture = () => {
   if (!value || newPictureUrlError.value) return
 
   const url = new URL(value)
-  emit('action', { type: 'artwork_replace', url: url.href })
+  emit('action', {
+    type: 'artwork_replace',
+    url: url.protocol === 'file:' ? value : url.href
+  })
   closeNewPicture()
 }
 
