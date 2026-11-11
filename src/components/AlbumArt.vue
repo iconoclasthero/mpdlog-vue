@@ -237,7 +237,7 @@ const newPictureInput = ref(null)
 let clipboardReadId = 0
 
 const isHttpUrl = (value) => {
-  if (!/^https?:\\/\\//i.test(value)) return false
+  if (!/^https?:\/\//i.test(value)) return false
 
   try {
     const url = new URL(value)
