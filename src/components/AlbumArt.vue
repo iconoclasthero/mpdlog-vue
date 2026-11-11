@@ -55,10 +55,18 @@
     </div>
     <!-- Placeholder / fallback -->
 
-    <div v-else-if="isLoading" class="musicdna-placeholder"
+    <div v-else-if="isLoading" class="art-block musicdna-placeholder"
          @click="$emit('refreshArt')"
          :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
       <p>Loading album art...</p>
+      <button
+        class="get-new-picture-button"
+        type="button"
+        @click.stop="openNewPicture"
+        title="Get new picture"
+        aria-label="Get new picture"
+        v-html="MAGNET_ICON"
+      ></button>
     </div>
 
 <!--    <img v-else-if="isDead" class="musicdna-placeholder"
@@ -85,6 +93,14 @@
           <use href="#binoculars-icon" />
         </svg>
       </a>
+      <button
+        class="get-new-picture-button"
+        type="button"
+        @click="openNewPicture"
+        title="Get new picture"
+        aria-label="Get new picture"
+        v-html="MAGNET_ICON"
+      ></button>
     </div>
 
 
@@ -108,6 +124,14 @@
         </svg>
 <!--        🔍 -->
       </a>
+      <button
+        class="get-new-picture-button"
+        type="button"
+        @click="openNewPicture"
+        title="Get new picture"
+        aria-label="Get new picture"
+        v-html="MAGNET_ICON"
+      ></button>
     </div>
 
     <div
