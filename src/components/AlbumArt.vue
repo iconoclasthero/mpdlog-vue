@@ -585,6 +585,9 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   z-index: 10;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
   padding: 0;
   color: #000;
   background: none;
