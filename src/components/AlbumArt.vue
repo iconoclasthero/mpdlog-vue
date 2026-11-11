@@ -263,7 +263,7 @@ const handleUrlPaste = (event) => {
   if (value.length > 512 || !isHttpUrl(value)) return
 
   newPictureUrl.value = value
-})
+}
 
 const openNewPicture = async () => {
   const requestId = ++clipboardReadId
