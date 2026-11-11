@@ -76,7 +76,7 @@
          :style="{ width: layout.narrow.value ? mobileMaxWidth : deskWidth + 'px' }">
 -->
 
-    <div v-else-if="isDead" class="musicdna-placeholder">
+    <div v-else-if="isDead" class="musicdna-placeholder art-block">
       <img
          :src="deadSVGUrl"
          alt="Grateful Dead SVG"
