@@ -167,6 +167,16 @@
             @click="clearNewPictureUrl"
           >×</button>
         </div>
+        <div class="new-picture-upscaler" role="group" aria-label="Upscaler">
+          <label>
+            <input v-model="newPictureUpscaler" type="radio" name="new-picture-upscaler" value="web">
+            ImgUpscaler
+          </label>
+          <label>
+            <input v-model="newPictureUpscaler" type="radio" name="new-picture-upscaler" value="local">
+            local
+          </label>
+        </div>
         <p v-if="newPictureUrlError" class="new-picture-error">
           {{ newPictureUrlError }}
         </p>
@@ -255,6 +265,7 @@ const MAGNET_ICON = `
 
 const newPictureOpen = ref(false)
 const newPictureUrl = ref('')
+const newPictureUpscaler = ref('web')
 const newPictureInput = ref(null)
 
 let clipboardReadId = 0
@@ -342,7 +353,8 @@ const replaceNewPicture = () => {
   const url = new URL(value)
   emit('action', {
     type: 'artwork_replace',
-    url: url.protocol === 'file:' ? value : url.href
+    url: url.protocol === 'file:' ? value : url.href,
+    upscaler: newPictureUpscaler.value
   })
   closeNewPicture()
 }
@@ -641,6 +653,24 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
 .new-picture-clear {
   flex-shrink: 0;
   cursor: pointer;
+}
+
+.new-picture-upscaler {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.new-picture-upscaler label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.new-picture-upscaler input {
+  margin: 0;
 }
 
 .new-picture-error {
