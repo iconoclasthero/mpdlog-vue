@@ -629,7 +629,7 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
 
 .new-picture-modal {
   width: 100%;
-  max-width: 480px;
+  max-width: 600px;
   padding: 20px;
   color: var(--text-color, #eee);
   background: var(--background-color, #252525);
@@ -667,6 +667,7 @@ watch([() => props.artist, () => props.mbArtistID], ([artist, mbid]) => {
   align-items: center;
   gap: 5px;
   cursor: pointer;
+  font-size: calc(1em + 2px);
 }
 
 .new-picture-upscaler input {
