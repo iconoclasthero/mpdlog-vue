@@ -1213,7 +1213,10 @@ const handleAction = (action) => {
       sendCommand({
         system: 'artwork',
         cmd: 'replace',
-        args: { url: action.url }
+        args: {
+          url: action.url,
+          upscaler: action.upscaler || 'web'
+        }
       }, "handleAction")
       return
     }
