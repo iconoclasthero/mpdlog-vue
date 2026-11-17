@@ -197,7 +197,12 @@
   </div>
 
   <div class="notification-container">
-    <div v-for="n in notifications" :key="n.id" class="notification">
+    <div
+      v-for="n in notifications"
+      :key="n.id"
+      class="notification"
+      :class="n.type"
+    >
       {{ n.msg }}
     </div>
   </div>
@@ -476,7 +481,22 @@ const connectWebSocketRouter = () => {
       resultBus.emit('artwork', msg)
 
       if (msg.cmd === 'replace') {
-        refreshAlbumArt()
+        const stderr = typeof msg.stderr === 'string' ? msg.stderr.trim() : ''
+        const stderrLines = stderr ? stderr.split(/\r?\n/) : []
+        const warnings = stderrLines.filter(line => /^\[WARN\]/.test(line.trim()))
+
+        warnings.forEach(warning => addNotification(warning, 12000, 'warning'))
+
+        if (msg.response === 'error') {
+          const errors = stderrLines.filter(line => !/^\[WARN\]/.test(line.trim()))
+          addNotification(
+            errors.join('\n').trim() || msg.error || 'Artwork replacement failed.',
+            12000,
+            'error'
+          )
+        } else if (msg.response === 'ok') {
+          refreshAlbumArt()
+        }
       }
 
       return
@@ -1583,10 +1603,10 @@ const handleKeydown = (ev) => {
 
 const notifications = ref([])
 
-const addNotification = (msg, duration = 8000) => {
+const addNotification = (msg, duration = 8000, type = 'error') => {
   console.log("[App] msg:", msg)
   const id = Date.now()
-  notifications.value.push({ id, msg })
+  notifications.value.push({ id, msg, type })
   setTimeout(() => {
     const idx = notifications.value.findIndex(n => n.id === id)
     if (idx !== -1) notifications.value.splice(idx, 1)
@@ -1686,5 +1706,11 @@ onUnmounted(() => {
   border-radius: 4px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
   font-weight: bold;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.notification.warning {
+  background: #a86f12;
 }
 </style>
