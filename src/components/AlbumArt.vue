@@ -269,7 +269,7 @@ const MAGNET_ICON = `
 
 const newPictureOpen = ref(false)
 const newPictureUrl = ref('')
-const newPictureUpscaler = ref('web')
+const newPictureUpscaler = ref('web-imgupscaler')
 const newPictureInput = ref(null)
 
 let clipboardReadId = 0
