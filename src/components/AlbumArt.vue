@@ -169,8 +169,12 @@
         </div>
         <div class="new-picture-upscaler" role="group" aria-label="Upscaler">
           <label>
-            <input v-model="newPictureUpscaler" type="radio" name="new-picture-upscaler" value="web">
+            <input v-model="newPictureUpscaler" type="radio" name="new-picture-upscaler" value="web-imgupscaler">
             ImgUpscaler
+          </label>
+          <label>
+            <input v-model="newPictureUpscaler" type="radio" name="new-picture-upscaler" value="web-cloudinary">
+            Cloudinary
           </label>
           <label>
             <input v-model="newPictureUpscaler" type="radio" name="new-picture-upscaler" value="local">
